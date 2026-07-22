@@ -2,6 +2,11 @@ import "reflect-metadata";
 import "pg"; // forces Vercel's bundler to include the pg package in the serverless function — TypeORM loads it dynamically otherwise, which the bundler can't detect
 import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
+// 1. Explicitly import the entity classes
+import { User } from "./entities/User";
+import { Department } from "./entities/Department";
+import { Employee } from "./entities/Employee";
+
 dotenv.config();
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -16,6 +21,7 @@ export const AppDataSource = new DataSource({
   ssl: { rejectUnauthorized: false },
   synchronize: false,
   logging: true,
-  entities: ["src/entities/*.ts"],
-  migrations: ["src/migrations/*.ts"],
+  entities: [User, Department, Employee],
+  // migrations: ["src/migrations/*.ts"],
+  migrations: [],
 });
