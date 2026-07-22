@@ -1,5 +1,4 @@
 import "reflect-metadata"; // must stay first, same rule as app.ts
-import serverless from "serverless-http";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -22,33 +21,27 @@ app.use(
   }),
 );
 
+// Native Express parsers work perfectly now without serverless-http breaking the stream
 app.use(express.json());
 app.use(cookieParser());
+
+// Database connection middleware runs on every Vercel invocation
+app.use(async (req, res, next) => {
+  if (!AppDataSource.isInitialized) {
+    try {
+      await AppDataSource.initialize();
+      console.log("Database connected natively");
+    } catch (err) {
+      console.error("Failed to connect to database:", err);
+      return res.status(500).json({ error: "Database initialization error" });
+    }
+  }
+  next();
+});
 
 app.use("/auth", authRoutes);
 app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
 
-// Serverless functions are stateless between invocations, so we can't rely
-// on "initialize once at startup" the way app.ts does for local dev.
-// Instead, we track whether the DB connection is already open, and only
-// initialize it if it isn't — this avoids errors from trying to open
-// the same connection twice across multiple function calls.
-let isInitialized = false;
-
-async function ensureDbConnection() {
-  if (!isInitialized) {
-    await AppDataSource.initialize();
-    isInitialized = true;
-  }
-}
-
-// wrap the whole thing so every request first confirms the DB is connected,
-// then hands off to serverless-http to translate the request/response
-// into the format Vercel's function runtime expects
-const handler = serverless(app);
-
-export default async function (req: any, res: any) {
-  await ensureDbConnection();
-  return handler(req, res);
-}
+// Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
+export default app;
