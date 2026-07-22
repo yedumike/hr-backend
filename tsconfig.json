@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
     // File Layout
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
-
     // Environment Settings
-    "module": "commonjs",       // changed from nodenext — TypeORM CLI & decorators are more reliable on commonjs for a backend
-    "target": "ES2021",         // changed from esnext — stable target, no need for bleeding-edge JS features on Node
+    "module": "commonjs", // changed from nodenext — TypeORM CLI & decorators are more reliable on commonjs for a backend
+    "target": "ES2021", // changed from esnext — stable target, no need for bleeding-edge JS features on Node
     "types": ["node"],
     "lib": ["ES2021"],
 
