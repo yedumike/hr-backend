@@ -6,6 +6,7 @@ import * as dotenv from "dotenv";
 import { User } from "./entities/User";
 import { Department } from "./entities/Department";
 import { Employee } from "./entities/Employee";
+import { Role } from "./entities/Role";
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ export const AppDataSource = new DataSource({
   ssl: { rejectUnauthorized: false },
   synchronize: false,
   logging: true,
-  entities: [User, Department, Employee],
+  entities: [User, Department, Employee, Role],
   // migrations: ["src/migrations/*.ts"],
   migrations: [],
 });
