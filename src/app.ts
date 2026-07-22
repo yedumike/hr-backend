@@ -36,14 +36,14 @@ app.use("/employees", employeeRoutes);
 
 // connect to the database first, and only start listening for requests
 // once that succeeds — avoids the server accepting traffic before it can query anything
-AppDataSource.initialize()
-  .then(() => {
-    console.log("Database connected");
-    app.listen(3000, () => console.log("Server running on port 3000"));
-  })
-  .catch((err) => {
-    console.error("Failed to connect to database:", err);
-    process.exit(1);
-  });
+// AppDataSource.initialize()
+//   .then(() => {
+//     console.log("Database connected");
+//     app.listen(3000, () => console.log("Server running on port 3000"));
+//   })
+//   .catch((err) => {
+//     console.error("Failed to connect to database:", err);
+//     process.exit(1);
+//   });
 
 export default app;

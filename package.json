@@ -5,10 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch src/local.ts",
+    "build": "tsc",
+    "start": "node dist/src/local.js",
     "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate -d src/data-source.ts",
     "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts",
     "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts",
-    "dev": "tsx watch src/app.ts",
     "seed": "tsx src/seed.ts"
   },
   "keywords": [],
@@ -26,6 +28,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
+    "serverless-http": "^4.0.0",
     "ts-node": "^10.9.2",
     "typeorm": "^1.1.0",
     "typescript": "^7.0.2"

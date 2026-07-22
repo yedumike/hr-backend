@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     // File Layout
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
 
     // Environment Settings
-    "module": "commonjs",       // changed from nodenext — TypeORM CLI & decorators are more reliable on commonjs for a backend
-    "target": "ES2021",         // changed from esnext — stable target, no need for bleeding-edge JS features on Node
+    "module": "commonjs",
+    "target": "ES2021",
     "types": ["node"],
     "lib": ["ES2021"],
 
@@ -24,12 +24,9 @@
     "exactOptionalPropertyTypes": true,
     "strict": true,
 
-    // Removed: jsx — not needed, this is a backend project, no React
-    // Removed: verbatimModuleSyntax — conflicts with reflect-metadata's side-effect-only import pattern
-    // Removed: isolatedModules — not needed without a bundler; can cause friction with TypeORM entity decorators
-
     "skipLibCheck": true,
     "moduleDetection": "force",
     "noUncheckedSideEffectImports": true
-  }
+  },
+  "include": ["src", "api"]
 }
