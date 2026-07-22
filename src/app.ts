@@ -11,7 +11,7 @@ import employeeRoutes from "./routes/employee.routes";
 dotenv.config();
 
 const app = express();
-
+//
 // same pattern as before: fail loudly at startup if this env var is missing,
 // rather than silently letting CORS misbehave later
 const FRONTEND_URL = process.env.FRONTEND_URL;
