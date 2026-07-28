@@ -9,6 +9,10 @@
     "types": ["node"],
     "lib": ["ES2021"],
 
+    //
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
     // Required for TypeORM decorators
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

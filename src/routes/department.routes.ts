@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { Department } from "../entities/Department";
 import { authenticate, authorize } from "../middleware/authenticate";
+import { Employee } from "../entities/Employee";
 
 const router = Router();
 
@@ -45,5 +46,109 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   const departments = await departmentRepo.find();
   res.json({ departments });
 });
+
+// single department lookup
+router.get("/:id", authenticate, async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    res.status(400).json({ error: "Invalid department id" });
+    return;
+  }
+
+  const departmentRepo = AppDataSource.getRepository(Department);
+  const department = await departmentRepo.findOne({ where: { id } });
+
+  if (!department) {
+    res.status(404).json({ error: "Department not found" });
+    return;
+  }
+
+  res.json({ department });
+});
+
+// update — currently just supports renaming
+router.put(
+  "/:id",
+  authenticate,
+  authorize("HR_ADMIN"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ error: "Invalid department id" });
+      return;
+    }
+
+    const { name } = req.body as { name?: string };
+
+    if (!name || name.trim().length === 0) {
+      res.status(400).json({ error: "Department name is required" });
+      return;
+    }
+
+    const departmentRepo = AppDataSource.getRepository(Department);
+    const department = await departmentRepo.findOne({ where: { id } });
+
+    if (!department) {
+      res.status(404).json({ error: "Department not found" });
+      return;
+    }
+
+    // check the new name isn't already taken by a DIFFERENT department
+    const existing = await departmentRepo.findOne({ where: { name } });
+    if (existing && existing.id !== department.id) {
+      res
+        .status(409)
+        .json({ error: "A department with this name already exists" });
+      return;
+    }
+
+    department.name = name;
+    await departmentRepo.save(department);
+
+    res.json({ department });
+  },
+);
+
+// delete — blocked if any employees are still linked to this department
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("HR_ADMIN"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ error: "Invalid department id" });
+      return;
+    }
+
+    const departmentRepo = AppDataSource.getRepository(Department);
+    const employeeRepo = AppDataSource.getRepository(Employee);
+
+    const department = await departmentRepo.findOne({ where: { id } });
+    if (!department) {
+      res.status(404).json({ error: "Department not found" });
+      return;
+    }
+
+    // count employees linked to this department before allowing deletion
+    const linkedEmployeeCount = await employeeRepo.count({
+      where: { department: { id } },
+    });
+
+    if (linkedEmployeeCount > 0) {
+      res.status(409).json({
+        error: `Cannot delete department — ${linkedEmployeeCount} employee(s) are still assigned to it. Reassign them first.`,
+      });
+      return;
+    }
+
+    await departmentRepo.remove(department);
+
+    res.json({ message: "Department deleted" });
+  },
+);
 
 export default router;
