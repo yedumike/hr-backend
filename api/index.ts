@@ -1,12 +1,11 @@
 import "reflect-metadata"; // must stay first, same rule as app.ts
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { AppDataSource } from "../src/data-source";
 import authRoutes from "../src/routes/auth.routes";
 import departmentRoutes from "../src/routes/department.routes";
 import employeeRoutes from "../src/routes/employee.routes";
-
 const app = express();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
@@ -26,7 +25,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Database connection middleware runs on every Vercel invocation
-app.use(async (req, res, next) => {
+app.use(async (req: Request, res: Response, next: NextFunction) => {
   if (!AppDataSource.isInitialized) {
     try {
       await AppDataSource.initialize();
