@@ -24,5 +24,6 @@ export const AppDataSource = new DataSource({
   logging: true,
   entities: [User, Department, Employee, Role],
   // migrations: ["src/migrations/*.ts"],
-  migrations: [],
+  // migrations: [],
+  migrations: process.env.VERCEL ? [] : ["src/migrations/*.ts"],
 });
