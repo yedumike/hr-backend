@@ -14,7 +14,11 @@ router.post(
   authenticate,
   authorize("HR_ADMIN"),
   async (req: Request, res: Response) => {
-    const { name } = req.body as { name?: string };
+    const { name, description, head_of_department_id } = req.body as {
+      name?: string;
+      description?: string;
+      head_of_department_id?: string;
+    };
 
     if (!name || name.trim().length === 0) {
       res.status(400).json({ error: "Department name is required" });
@@ -22,9 +26,8 @@ router.post(
     }
 
     const departmentRepo = AppDataSource.getRepository(Department);
+    const employeeRepo = AppDataSource.getRepository(Employee);
 
-    // check for duplicates ourselves first, so we can return a clean error
-    // instead of letting the DB's UNIQUE constraint throw an ugly raw error
     const existing = await departmentRepo.findOne({ where: { name } });
     if (existing) {
       res
@@ -33,7 +36,26 @@ router.post(
       return;
     }
 
-    const department = departmentRepo.create({ name });
+    // head_of_department is optional — only look it up if provided
+    let headOfDepartment: Employee | null = null;
+    if (head_of_department_id) {
+      headOfDepartment = await employeeRepo.findOne({
+        where: { id: head_of_department_id },
+      });
+      if (!headOfDepartment) {
+        res
+          .status(404)
+          .json({ error: "Specified head of department not found" });
+        return;
+      }
+    }
+
+    const department = departmentRepo.create({
+      name,
+      description: description ?? null,
+      head_of_department: headOfDepartment,
+    });
+
     await departmentRepo.save(department);
 
     res.status(201).json({ department });
@@ -91,31 +113,51 @@ router.put(
       return;
     }
 
-    const { name } = req.body as { name?: string };
-
-    if (!name || name.trim().length === 0) {
-      res.status(400).json({ error: "Department name is required" });
-      return;
-    }
+    const { name, description, head_of_department_id } = req.body as {
+      name?: string;
+      description?: string;
+      head_of_department_id?: string;
+    };
 
     const departmentRepo = AppDataSource.getRepository(Department);
-    const department = await departmentRepo.findOne({ where: { id } });
+    const employeeRepo = AppDataSource.getRepository(Employee);
 
+    const department = await departmentRepo.findOne({ where: { id } });
     if (!department) {
       res.status(404).json({ error: "Department not found" });
       return;
     }
 
-    // check the new name isn't already taken by a DIFFERENT department
-    const existing = await departmentRepo.findOne({ where: { name } });
-    if (existing && existing.id !== department.id) {
-      res
-        .status(409)
-        .json({ error: "A department with this name already exists" });
-      return;
+    if (name) {
+      const existing = await departmentRepo.findOne({ where: { name } });
+      if (existing && existing.id !== department.id) {
+        res
+          .status(409)
+          .json({ error: "A department with this name already exists" });
+        return;
+      }
+      department.name = name;
     }
 
-    department.name = name;
+    // description can be explicitly cleared by sending an empty string,
+    // but only touched at all if the key was actually sent
+    if (description !== undefined) {
+      department.description = description || null;
+    }
+
+    if (head_of_department_id) {
+      const headOfDepartment = await employeeRepo.findOne({
+        where: { id: head_of_department_id },
+      });
+      if (!headOfDepartment) {
+        res
+          .status(404)
+          .json({ error: "Specified head of department not found" });
+        return;
+      }
+      department.head_of_department = headOfDepartment;
+    }
+
     await departmentRepo.save(department);
 
     res.json({ department });
