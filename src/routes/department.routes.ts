@@ -43,7 +43,17 @@ router.post(
 // (needed for things like populating a dropdown when creating an employee)
 router.get("/", authenticate, async (req: Request, res: Response) => {
   const departmentRepo = AppDataSource.getRepository(Department);
-  const departments = await departmentRepo.find();
+
+  // req.query values are typed loosely by Express (string | string[] | undefined),
+  // same reasoning as req.params — so we compare directly against the string "true"
+  // rather than trying to use it as a boolean
+  const includeInactive = req.query.includeInactive === "true";
+
+  const departments = await departmentRepo.find({
+    where: includeInactive ? {} : { is_active: true },
+    relations: { head_of_department: true },
+  });
+
   res.json({ departments });
 });
 
