@@ -3,8 +3,8 @@ import { Router, Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { Employee } from "../entities/Employee";
 import { Department } from "../entities/Department";
-import { Not } from "typeorm";
 import { authenticate } from "../middleware/authenticate";
+import { Not } from "typeorm";
 
 const router = Router();
 

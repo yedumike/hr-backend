@@ -6,6 +6,8 @@ import { AppDataSource } from "../src/data-source";
 import authRoutes from "../src/routes/auth.routes";
 import departmentRoutes from "../src/routes/department.routes";
 import employeeRoutes from "../src/routes/employee.routes";
+import dashboardRoutes from "../src/routes/dashboard.routes";
+
 const app = express();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
@@ -41,6 +43,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
 app.use("/auth", authRoutes);
 app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
+app.use("/dashboard", dashboardRoutes);
 
 // Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
 export default app;
