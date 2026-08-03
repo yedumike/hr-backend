@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Department } from "../entities/Department";
 import { authenticate, authorize } from "../middleware/authenticate";
 import { Employee } from "../entities/Employee";
+import { Not } from "typeorm";
 
 const router = Router();
 
@@ -143,21 +144,25 @@ router.delete(
       return;
     }
 
-    // count employees linked to this department before allowing deletion
+    // only count employees who are still genuinely active/inactive —
+    // a terminated employee historically linked to this department
+    // shouldn't block deactivation
     const linkedEmployeeCount = await employeeRepo.count({
-      where: { department: { id } },
+      where: { department: { id }, status: Not("terminated") },
     });
 
     if (linkedEmployeeCount > 0) {
       res.status(409).json({
-        error: `Cannot delete department — ${linkedEmployeeCount} employee(s) are still assigned to it. Reassign them first.`,
+        error: `Cannot deactivate department — ${linkedEmployeeCount} active employee(s) are still assigned to it. Reassign them first.`,
       });
       return;
     }
 
-    await departmentRepo.remove(department);
+    // soft delete — flip the flag, row stays in the DB
+    department.is_active = false;
+    await departmentRepo.save(department);
 
-    res.json({ message: "Department deleted" });
+    res.json({ message: "Department deactivated", department });
   },
 );
 
