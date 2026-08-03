@@ -7,6 +7,7 @@ import { AppDataSource } from "./data-source";
 import authRoutes from "./routes/auth.routes";
 import departmentRoutes from "./routes/department.routes";
 import employeeRoutes from "./routes/employee.routes";
+import dashboardRoutes from "./routes/dashboard.routes";
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use("/auth", authRoutes); // all routes in auth.routes.ts are now prefixed w
 // e.g. POST /auth/login, GET /auth/me
 app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
+app.use("/dashboard", dashboardRoutes);
 
 // connect to the database first, and only start listening for requests
 // once that succeeds — avoids the server accepting traffic before it can query anything
