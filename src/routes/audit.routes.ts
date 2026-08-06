@@ -19,6 +19,21 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
 
   const logs = await auditLogRepo.find({
     relations: { user: true },
+    // explicitly whitelist which fields to return — this applies to the
+    // main entity AND any relation you list here. Without this, TypeORM
+    // returns every column on the related User, including password_hash.
+    select: {
+      id: true,
+      action: true,
+      entity_type: true,
+      entity_id: true,
+      description: true,
+      created_at: true,
+      user: {
+        id: true,
+        email: true,
+      },
+    },
     order: { created_at: "DESC" },
     take: limit,
   });
