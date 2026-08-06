@@ -9,6 +9,8 @@ import departmentRoutes from "./routes/department.routes";
 import employeeRoutes from "./routes/employee.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import auditRoutes from "./routes/audit.routes";
+import educationRoutes from "./routes/education.routes";
+// ...
 dotenv.config();
 
 const app = express();
@@ -36,6 +38,8 @@ app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/audit-logs", auditRoutes);
+app.use("/employees", employeeRoutes);
+app.use("/education", educationRoutes); // both routers share the /employees base
 
 // connect to the database first, and only start listening for requests
 // once that succeeds — avoids the server accepting traffic before it can query anything
