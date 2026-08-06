@@ -4,6 +4,7 @@ import { Employee } from "../entities/Employee";
 import { Department } from "../entities/Department";
 import { authenticate, authorize } from "../middleware/authenticate";
 import { Not } from "typeorm";
+import { logAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -113,6 +114,15 @@ router.post(
     });
 
     await employeeRepo.save(employee);
+
+    // req.user is guaranteed to exist here, since this route is behind `authenticate`
+    await logAudit({
+      userId: req.user!.userId,
+      action: "CREATE",
+      entityType: "Employee",
+      entityId: employee.id,
+      description: `Added a new employee record for ${employee.first_name} ${employee.last_name}`,
+    });
 
     res.status(201).json({ employee });
   },
@@ -242,6 +252,13 @@ router.put(
     }
 
     await employeeRepo.save(employee);
+    await logAudit({
+      userId: req.user!.userId,
+      action: "UPDATE",
+      entityType: "Employee",
+      entityId: employee.id,
+      description: `Updated employment information for ${employee.first_name} ${employee.last_name}`,
+    });
 
     res.json({ employee });
   },
@@ -271,7 +288,13 @@ router.delete(
     // this preserves the record for audit/reporting purposes
     employee.status = "terminated";
     await employeeRepo.save(employee);
-
+    await logAudit({
+      userId: req.user!.userId,
+      action: "DELETE",
+      entityType: "Employee",
+      entityId: employee.id,
+      description: `Marked ${employee.first_name} ${employee.last_name} as terminated`,
+    });
     res.json({ message: "Employee marked as terminated", employee });
   },
 );
