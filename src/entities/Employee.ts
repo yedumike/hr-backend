@@ -11,8 +11,6 @@ import {
 import { Department } from "./Department";
 import { User } from "./User";
 
-// a plain string union — TypeScript will only allow these exact values,
-// which helps catch typos like "Actve" at compile time instead of runtime
 export type EmployeeStatus = "active" | "inactive" | "terminated";
 
 @Entity("employees")
@@ -28,7 +26,7 @@ export class Employee {
   last_name!: string;
 
   @Column({ type: "date" })
-  date_of_birth!: string; // stored as a DATE column; TypeORM returns/accepts these as "YYYY-MM-DD" strings
+  date_of_birth!: string;
 
   @Column({ type: "varchar", unique: true })
   national_id!: string;
@@ -37,28 +35,26 @@ export class Employee {
   phone!: string;
 
   @Column({ type: "varchar", unique: true })
-  personal_email!: string; // separate from login email (User.email) — this is their personal contact
+  personal_email!: string;
 
   @Column({ type: "varchar" })
   address!: string;
 
   // --- Employment details ---
   @Column({ type: "varchar" })
-  role_title!: string; // e.g. "Software Engineer" — free text, not the same as auth Role (HR_ADMIN etc)
+  role_title!: string;
 
   @ManyToOne(() => Department, (department) => department.employees, {
-    nullable: false, //every employee must belong to a department,
+    nullable: false,
   })
   department!: Department;
 
   @Column({ type: "date" })
   hire_date!: string;
 
-  // decimal, never float — floats lose precision on money values
   @Column({ type: "decimal", precision: 12, scale: 2 })
-  salary!: string; // TypeORM returns decimal columns as strings by default, to avoid JS float rounding issues
+  salary!: string;
 
-  // self-referencing relation — an employee's manager is also an Employee
   @ManyToOne(() => Employee, { nullable: true })
   @JoinColumn({ name: "manager_id" })
   manager!: Employee | null;
@@ -66,8 +62,17 @@ export class Employee {
   @Column({ type: "varchar", default: "active" })
   status!: EmployeeStatus;
 
+  // date probation is expected to end — nullable, since not every employee
+  // is currently in a probation period (e.g. long-tenured staff)
+  @Column({ type: "date", nullable: true })
+  probation_end_date!: string | null;
+
+  // date a fixed-term contract needs renewing — nullable, since not every
+  // employee is on a fixed-term contract (e.g. permanent staff)
+  @Column({ type: "date", nullable: true })
+  contract_renewal_date!: string | null;
+
   // --- Optional link to a login account ---
-  // nullable: true means this employee record can exist with no linked User at all
   @OneToOne(() => User, { nullable: true })
   @JoinColumn({ name: "user_id" })
   user!: User | null;

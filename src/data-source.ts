@@ -7,6 +7,7 @@ import { User } from "./entities/User";
 import { Department } from "./entities/Department";
 import { Employee } from "./entities/Employee";
 import { Role } from "./entities/Role";
+import { AuditLog } from "./entities/AuditLog";
 
 dotenv.config();
 
@@ -22,7 +23,8 @@ export const AppDataSource = new DataSource({
   ssl: { rejectUnauthorized: false },
   synchronize: false,
   logging: true,
-  entities: [User, Department, Employee, Role],
+  entities: [User, Department, Employee, Role, AuditLog],
   // migrations: ["src/migrations/*.ts"],
-  migrations: [],
+  // migrations: [],
+  migrations: process.env.VERCEL ? [] : ["src/migrations/*.ts"],
 });
