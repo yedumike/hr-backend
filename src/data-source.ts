@@ -10,6 +10,8 @@ import { Role } from "./entities/Role";
 import { AuditLog } from "./entities/AuditLog";
 import { EducationRecord } from "./entities/EducationRecord";
 import { Certification } from "./entities/Certification";
+import { Dependent } from "./entities/Dependent";
+import { EmergencyContact } from "./entities/EmergencyContact";
 
 dotenv.config();
 
@@ -33,6 +35,8 @@ export const AppDataSource = new DataSource({
     AuditLog,
     EducationRecord,
     Certification,
+    Dependent,
+    EmergencyContact,
   ],
   // migrations: ["src/migrations/*.ts"],
   // migrations: [],
