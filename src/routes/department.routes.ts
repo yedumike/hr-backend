@@ -4,6 +4,7 @@ import { Department } from "../entities/Department";
 import { authenticate, authorize } from "../middleware/authenticate";
 import { Employee } from "../entities/Employee";
 import { Not } from "typeorm";
+import { logAudit } from "../utils/audit";
 
 const router = Router();
 
@@ -57,7 +58,13 @@ router.post(
     });
 
     await departmentRepo.save(department);
-
+    await logAudit({
+      userId: req.user!.userId,
+      action: "CREATE",
+      entityType: "Department",
+      entityId: department.id,
+      description: `Created the ${department.name} department`,
+    });
     res.status(201).json({ department });
   },
 );
@@ -159,7 +166,13 @@ router.put(
     }
 
     await departmentRepo.save(department);
-
+    await logAudit({
+      userId: req.user!.userId,
+      action: "UPDATE",
+      entityType: "Department",
+      entityId: department.id,
+      description: `Updated the ${department.name} department`,
+    });
     res.json({ department });
   },
 );
@@ -203,6 +216,13 @@ router.delete(
     // soft delete — flip the flag, row stays in the DB
     department.is_active = false;
     await departmentRepo.save(department);
+    await logAudit({
+      userId: req.user!.userId,
+      action: "DELETE",
+      entityType: "Department",
+      entityId: department.id,
+      description: `Deactivated the ${department.name} department`,
+    });
 
     res.json({ message: "Department deactivated", department });
   },
