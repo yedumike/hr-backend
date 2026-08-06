@@ -7,6 +7,7 @@ import authRoutes from "../src/routes/auth.routes";
 import departmentRoutes from "../src/routes/department.routes";
 import employeeRoutes from "../src/routes/employee.routes";
 import dashboardRoutes from "../src/routes/dashboard.routes";
+import auditRoutes from "../src/routes/audit.routes";
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/auth", authRoutes);
 app.use("/departments", departmentRoutes);
 app.use("/employees", employeeRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/audit-logs", auditRoutes);
 
 // Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
 export default app;
