@@ -3,12 +3,13 @@ import { Router, Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { AuditLog } from "../entities/AuditLog";
 import { authenticate } from "../middleware/authenticate";
+import { Employee } from "../entities/Employee";
 
 const router = Router();
 
 router.get("/", authenticate, async (req: Request, res: Response) => {
   const auditLogRepo = AppDataSource.getRepository(AuditLog);
-
+  const employeeRepo = AppDataSource.getRepository(Employee);
   // support a "limit" query param since the frontend will likely only want
   // the most recent handful (the mockup showed ~7 entries), not the entire history
   const limitParam = req.query.limit;
@@ -19,9 +20,6 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
 
   const logs = await auditLogRepo.find({
     relations: { user: true },
-    // explicitly whitelist which fields to return — this applies to the
-    // main entity AND any relation you list here. Without this, TypeORM
-    // returns every column on the related User, including password_hash.
     select: {
       id: true,
       action: true,
@@ -29,16 +27,32 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
       entity_id: true,
       description: true,
       created_at: true,
-      user: {
-        id: true,
-        email: true,
-      },
+      user: { id: true, email: true },
     },
     order: { created_at: "DESC" },
     take: limit,
   });
 
-  res.json({ logs });
+  // enrich each log with an actor name — prefer the linked Employee's name
+  // if one exists, otherwise fall back to the user's email
+  const enrichedLogs = await Promise.all(
+    logs.map(async (log) => {
+      let actorName = log.user?.email ?? "Unknown user";
+
+      if (log.user) {
+        const employee = await employeeRepo.findOne({
+          where: { user: { id: log.user.id } },
+        });
+        if (employee) {
+          actorName = `${employee.first_name} ${employee.last_name}`;
+        }
+      }
+
+      return { ...log, actorName };
+    }),
+  );
+
+  res.json({ logs: enrichedLogs });
 });
 
 export default router;
