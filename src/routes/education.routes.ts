@@ -87,4 +87,99 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   res.json({ educationRecords: records });
 });
 
+interface UpdateEducationBody {
+  institution?: string;
+  degree?: string;
+  field_of_study?: string;
+  year_completed?: number;
+}
+
+// UPDATE — PUT /education/:id
+router.put(
+  "/:id",
+  authenticate,
+  authorize("HR_ADMIN"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ error: "Invalid education record id" });
+      return;
+    }
+
+    const educationRepo = AppDataSource.getRepository(EducationRecord);
+    const record = await educationRepo.findOne({
+      where: { id },
+      relations: { employee: true },
+    });
+
+    if (!record) {
+      res.status(404).json({ error: "Education record not found" });
+      return;
+    }
+
+    const body = req.body as UpdateEducationBody;
+
+    if (body.institution) record.institution = body.institution;
+    if (body.degree) record.degree = body.degree;
+    if (body.field_of_study) record.field_of_study = body.field_of_study;
+    if (body.year_completed) record.year_completed = body.year_completed;
+
+    await educationRepo.save(record);
+
+    await logAudit({
+      userId: req.user!.userId,
+      action: "UPDATE",
+      entityType: "EducationRecord",
+      entityId: record.id,
+      description: `Updated an education record for ${record.employee.first_name} ${record.employee.last_name}`,
+    });
+
+    res.json({ educationRecord: record });
+  },
+);
+
+// DELETE — DELETE /education/:id
+// note: this is a HARD delete, not soft — unlike Employee/Department,
+// an incorrect education record has no ongoing operational significance
+// once removed, and there's no "reactivate" use case here
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("HR_ADMIN"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ error: "Invalid education record id" });
+      return;
+    }
+
+    const educationRepo = AppDataSource.getRepository(EducationRecord);
+    const record = await educationRepo.findOne({
+      where: { id },
+      relations: { employee: true },
+    });
+
+    if (!record) {
+      res.status(404).json({ error: "Education record not found" });
+      return;
+    }
+
+    const employeeName = `${record.employee.first_name} ${record.employee.last_name}`;
+
+    await educationRepo.remove(record);
+
+    await logAudit({
+      userId: req.user!.userId,
+      action: "DELETE",
+      entityType: "EducationRecord",
+      entityId: id,
+      description: `Removed an education record for ${employeeName}`,
+    });
+
+    res.json({ message: "Education record deleted" });
+  },
+);
+
 export default router;
