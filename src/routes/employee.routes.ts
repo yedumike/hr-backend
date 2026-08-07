@@ -5,6 +5,11 @@ import { Department } from "../entities/Department";
 import { authenticate, authorize } from "../middleware/authenticate";
 import { Not } from "typeorm";
 import { logAudit } from "../utils/audit";
+import { User } from "../entities/User";
+import { Role } from "../entities/Role";
+import { generateTempPassword } from "../utils/generatePassword";
+import bcrypt from "bcrypt";
+import { sendEmail } from "../emails/sendEmail";
 
 const router = Router();
 
@@ -296,6 +301,120 @@ router.delete(
       description: `Marked ${employee.first_name} ${employee.last_name} as terminated`,
     });
     res.json({ message: "Employee marked as terminated", employee });
+  },
+);
+
+interface CreateAccountBody {
+  role?: string; // "HR_ADMIN" | "MANAGER" | "EMPLOYEE"
+}
+
+router.post(
+  "/:id/create-account",
+  authenticate,
+  authorize("HR_ADMIN"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ error: "Invalid employee id" });
+      return;
+    }
+
+    const { role } = req.body as CreateAccountBody;
+
+    if (!role) {
+      res.status(400).json({ error: "role is required" });
+      return;
+    }
+
+    const employeeRepo = AppDataSource.getRepository(Employee);
+    const userRepo = AppDataSource.getRepository(User);
+    const roleRepo = AppDataSource.getRepository(Role);
+
+    const employee = await employeeRepo.findOne({
+      where: { id },
+      relations: { user: true },
+    });
+
+    if (!employee) {
+      res.status(404).json({ error: "Employee not found" });
+      return;
+    }
+
+    if (employee.user) {
+      res.status(409).json({ error: "This employee already has an account" });
+      return;
+    }
+
+    const roleEntity = await roleRepo.findOne({ where: { name: role } });
+    if (!roleEntity) {
+      res.status(400).json({ error: "Invalid role specified" });
+      return;
+    }
+
+    // check the login email isn't already taken by someone else
+    const existingUser = await userRepo.findOne({
+      where: { email: employee.personal_email },
+    });
+    if (existingUser) {
+      res
+        .status(409)
+        .json({ error: "A user account with this email already exists" });
+      return;
+    }
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    const user = userRepo.create({
+      email: employee.personal_email,
+      password_hash: passwordHash,
+      role: roleEntity,
+      must_change_password: true,
+    });
+
+    await userRepo.save(user);
+
+    // link the new User back to this Employee
+    employee.user = user;
+    await employeeRepo.save(employee);
+
+    // send the credentials email — if this fails, we don't roll back the
+    // account creation, but we do let HR know so they can manually share
+    // the credentials instead
+    try {
+      await sendEmail({
+        to: employee.personal_email,
+        subject: "Your HR System Account Has Been Created",
+        templateName: "accountCreated",
+        variables: {
+          name: `${employee.first_name} ${employee.last_name}`,
+          email: employee.personal_email,
+          tempPassword,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to send account creation email:", err);
+      res.status(201).json({
+        message:
+          "Account created, but the email failed to send. Share credentials manually.",
+        email: employee.personal_email,
+        tempPassword,
+      });
+      return;
+    }
+
+    await logAudit({
+      userId: req.user!.userId,
+      action: "CREATE",
+      entityType: "User",
+      entityId: user.id,
+      description: `Created a login account for ${employee.first_name} ${employee.last_name}`,
+    });
+
+    res.status(201).json({
+      message: "Account created and credentials emailed to the employee",
+    });
   },
 );
 
