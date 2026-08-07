@@ -13,6 +13,7 @@ import educationRoutes from "./routes/education.routes";
 import certificationRoutes from "./routes/certification.routes";
 import dependentRoutes from "./routes/dependent.routes";
 import emergencyContactRoutes from "./routes/emergency-contact.routes";
+import documentRoutes from "./routes/document.routes";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/education", educationRoutes); // both routers share the /employees bas
 app.use("/certifications", certificationRoutes);
 app.use("/dependents", dependentRoutes);
 app.use("/emergency-contacts", emergencyContactRoutes);
+app.use("/documents", documentRoutes);
 
 // connect to the database first, and only start listening for requests
 // once that succeeds — avoids the server accepting traffic before it can query anything
