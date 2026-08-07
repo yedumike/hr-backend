@@ -23,12 +23,12 @@
 import { createWorker } from "tesseract.js";
 
 export async function extractTextFromImage(buffer: Buffer): Promise<string> {
-  // load Tesseract's worker/core/language files from a CDN instead of
-  // local node_modules — Vercel's bundler doesn't include these files
-  // automatically since they're loaded dynamically, not via a static import
+  // workerPath is deliberately NOT overridden — Node's Worker class requires
+  // a real local file path, and Tesseract's default local worker script
+  // loads correctly on Vercel. Only corePath (the .wasm binary) and langPath
+  // (language data) need to come from a CDN, since those specifically failed
+  // to bundle correctly.
   const worker = await createWorker("eng", 1, {
-    workerPath:
-      "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
     corePath:
       "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
     langPath: "https://tessdata.projectnaptha.com/4.0.0",
@@ -43,3 +43,27 @@ export async function extractTextFromImage(buffer: Buffer): Promise<string> {
     await worker.terminate();
   }
 }
+
+// import { createWorker } from "tesseract.js";
+
+// export async function extractTextFromImage(buffer: Buffer): Promise<string> {
+//   // load Tesseract's worker/core/language files from a CDN instead of
+//   // local node_modules — Vercel's bundler doesn't include these files
+//   // automatically since they're loaded dynamically, not via a static import
+//   const worker = await createWorker("eng", 1, {
+//     workerPath:
+//       "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
+//     corePath:
+//       "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
+//     langPath: "https://tessdata.projectnaptha.com/4.0.0",
+//   });
+
+//   try {
+//     const {
+//       data: { text },
+//     } = await worker.recognize(buffer);
+//     return text;
+//   } finally {
+//     await worker.terminate();
+//   }
+// }
