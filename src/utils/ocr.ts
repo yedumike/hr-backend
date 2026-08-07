@@ -23,14 +23,12 @@
 import { createWorker } from "tesseract.js";
 
 export async function extractTextFromImage(buffer: Buffer): Promise<string> {
-  // workerPath is deliberately NOT overridden — Node's Worker class requires
-  // a real local file path, and Tesseract's default local worker script
-  // loads correctly on Vercel. Only corePath (the .wasm binary) and langPath
-  // (language data) need to come from a CDN, since those specifically failed
-  // to bundle correctly.
+  // corePath must point to a DIRECTORY, not a specific .wasm/.js file —
+  // pointing to one specific file (what we tried before) forces Tesseract
+  // to use that exact variant regardless of what the runtime environment
+  // actually supports, which is why it kept failing on Vercel's servers
   const worker = await createWorker("eng", 1, {
-    corePath:
-      "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
+    corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0",
     langPath: "https://tessdata.projectnaptha.com/4.0.0",
   });
 
