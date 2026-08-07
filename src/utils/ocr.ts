@@ -1,3 +1,63 @@
+import axios from "axios";
+import FormData from "form-data";
+
+// Your clean validated environment variable setup
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is not set in environment variables`);
+  }
+  return value;
+}
+
+const OCR_SPACE_API_KEY = getRequiredEnv("OCR_SPACE_API_KEY");
+
+export async function extractTextFromImage(
+  buffer: Buffer,
+  filename: string,
+  mimetype: string,
+): Promise<string> {
+  try {
+    const formData = new FormData();
+
+    formData.append("file", buffer, { filename, contentType: mimetype });
+    formData.append("language", "eng");
+    formData.append("isOverlayRequired", "false");
+    formData.append("detectOrientation", "true");
+    formData.append("scale", "true");
+
+    // Enforce split configuration parameters to stop string path mangling
+    const response = await axios({
+      method: "post",
+      url: "/parse/image",
+      baseURL: "https://api.ocr.space",
+      data: formData,
+      headers: {
+        ...formData.getHeaders(),
+        apikey: OCR_SPACE_API_KEY,
+      },
+      timeout: 9500,
+    });
+
+    if (response.data.IsErroredOnProcessing) {
+      const errorMsg = response.data.ErrorMessage?.[0] || "OCR engine error";
+      throw new Error(`OCR.space Error: ${errorMsg}`);
+    }
+
+    const parsedResults = response.data.ParsedResults;
+
+    // Explicit array targeting ensures text is read from the first page
+    if (parsedResults && parsedResults.length > 0) {
+      return parsedResults[0].ParsedText || "";
+    }
+
+    return "";
+  } catch (error: any) {
+    console.error("OCR.space Execution Failure:", error.message || error);
+    throw error;
+  }
+}
+
 // import { createWorker } from "tesseract.js";
 
 // // runs OCR on an image/PDF buffer, returns the extracted text
@@ -20,27 +80,27 @@
 //   }
 // }
 
-import { createWorker } from "tesseract.js";
+// import { createWorker } from "tesseract.js";
 
-export async function extractTextFromImage(buffer: Buffer): Promise<string> {
-  // corePath must point to a DIRECTORY, not a specific .wasm/.js file —
-  // pointing to one specific file (what we tried before) forces Tesseract
-  // to use that exact variant regardless of what the runtime environment
-  // actually supports, which is why it kept failing on Vercel's servers
-  const worker = await createWorker("eng", 1, {
-    corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0",
-    langPath: "https://tessdata.projectnaptha.com/4.0.0",
-  });
+// export async function extractTextFromImage(buffer: Buffer): Promise<string> {
+//   // corePath must point to a DIRECTORY, not a specific .wasm/.js file —
+//   // pointing to one specific file (what we tried before) forces Tesseract
+//   // to use that exact variant regardless of what the runtime environment
+//   // actually supports, which is why it kept failing on Vercel's servers
+//   const worker = await createWorker("eng", 1, {
+//     corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0",
+//     langPath: "https://tessdata.projectnaptha.com/4.0.0",
+//   });
 
-  try {
-    const {
-      data: { text },
-    } = await worker.recognize(buffer);
-    return text;
-  } finally {
-    await worker.terminate();
-  }
-}
+//   try {
+//     const {
+//       data: { text },
+//     } = await worker.recognize(buffer);
+//     return text;
+//   } finally {
+//     await worker.terminate();
+//   }
+// }
 
 // import { createWorker } from "tesseract.js";
 
