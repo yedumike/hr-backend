@@ -67,7 +67,12 @@ router.post("/login", async (req: Request, res: Response) => {
 
   res.json({
     message: "Login successful",
-    user: { id: user.id, email: user.email, role: user.role.name },
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role.name,
+      mustChangePassword: user.must_change_password,
+    },
   });
 });
 
@@ -82,5 +87,56 @@ router.post("/logout", (req: Request, res: Response) => {
 router.get("/me", authenticate, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
+
+interface ChangePasswordBody {
+  currentPassword?: string;
+  newPassword?: string;
+}
+
+router.post(
+  "/change-password",
+  authenticate,
+  async (req: Request, res: Response) => {
+    const { currentPassword, newPassword } = req.body as ChangePasswordBody;
+
+    if (!currentPassword || !newPassword) {
+      res
+        .status(400)
+        .json({ error: "currentPassword and newPassword are required" });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      res
+        .status(400)
+        .json({ error: "New password must be at least 8 characters" });
+      return;
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: req.user!.userId } });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(
+      currentPassword,
+      user.password_hash,
+    );
+    if (!currentPasswordMatches) {
+      res.status(401).json({ error: "Current password is incorrect" });
+      return;
+    }
+
+    user.password_hash = await bcrypt.hash(newPassword, 10);
+    user.must_change_password = false;
+
+    await userRepo.save(user);
+
+    res.json({ message: "Password changed successfully" });
+  },
+);
 
 export default router;

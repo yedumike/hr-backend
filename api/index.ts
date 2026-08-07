@@ -12,6 +12,7 @@ import educationRoutes from "../src/routes/education.routes";
 import certificationRoutes from "../src/routes/certification.routes";
 import dependentRoutes from "../src/routes/dependent.routes";
 import emergencyContactRoutes from "../src/routes/emergency-contact.routes";
+import documentRoutes from "../src/routes/document.routes";
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use("/education", educationRoutes); // both routers share the /employees bas
 app.use("/certifications", certificationRoutes);
 app.use("/dependents", dependentRoutes);
 app.use("/emergency-contacts", emergencyContactRoutes);
+app.use("/documents", documentRoutes);
 
 // Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
 export default app;
