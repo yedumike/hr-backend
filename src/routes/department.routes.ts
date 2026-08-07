@@ -99,7 +99,7 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
   const departmentRepo = AppDataSource.getRepository(Department);
   const department = await departmentRepo.findOne({
     where: { id },
-    relations: { employees: true },
+    relations: { employees: true, head_of_department: true },
   });
 
   if (!department) {
