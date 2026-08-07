@@ -1,6 +1,17 @@
 import axios from "axios";
 import FormData from "form-data";
 
+// same required-env-var pattern we've used throughout the project
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is not set in environment variables`);
+  }
+  return value;
+}
+
+const OCR_SPACE_API_KEY = getRequiredEnv("OCR_SPACE_API_KEY");
+
 export async function extractTextFromImage(buffer: Buffer): Promise<string> {
   try {
     const formData = new FormData();
@@ -15,7 +26,7 @@ export async function extractTextFromImage(buffer: Buffer): Promise<string> {
     const response = await axios.post("https://ocr.space", formData, {
       headers: {
         ...formData.getHeaders(),
-        apikey: process.env.OCR_SPACE_API_KEY,
+        apikey: OCR_SPACE_API_KEY,
       },
       timeout: 7000, // Safely exits under Vercel's strict 10s ceiling
     });
