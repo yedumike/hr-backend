@@ -98,17 +98,17 @@ router.post(
 
     await documentRepo.save(document);
 
-    // run OCR before responding — see if it completes within Vercel's time limit
-    try {
-      const text = await extractTextFromImage(req.file.buffer);
-      document.ocr_text = text;
-      document.ocr_status = "completed";
-    } catch (err) {
-      console.error("OCR failed:", err);
-      document.ocr_status = "failed";
-    }
+    // // run OCR before responding — see if it completes within Vercel's time limit
+    // try {
+    //   const text = await extractTextFromImage(req.file.buffer);
+    //   document.ocr_text = text;
+    //   document.ocr_status = "completed";
+    // } catch (err) {
+    //   console.error("OCR failed:", err);
+    //   document.ocr_status = "failed";
+    // }
 
-    await documentRepo.save(document);
+    // await documentRepo.save(document);
 
     await logAudit({
       userId: req.user!.userId,
@@ -120,17 +120,17 @@ router.post(
 
     res.status(201).json({ document });
 
-    // extractTextFromImage(req.file.buffer)
-    //   .then(async (text) => {
-    //     document.ocr_text = text;
-    //     document.ocr_status = "completed";
-    //     await documentRepo.save(document);
-    //   })
-    //   .catch(async (err) => {
-    //     console.error("OCR failed:", err);
-    //     document.ocr_status = "failed";
-    //     await documentRepo.save(document);
-    //   });
+    extractTextFromImage(req.file.buffer)
+      .then(async (text) => {
+        document.ocr_text = text;
+        document.ocr_status = "completed";
+        await documentRepo.save(document);
+      })
+      .catch(async (err) => {
+        console.error("OCR failed:", err);
+        document.ocr_status = "failed";
+        await documentRepo.save(document);
+      });
   },
 );
 
