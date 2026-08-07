@@ -12,11 +12,15 @@ function getRequiredEnv(name: string): string {
 
 const OCR_SPACE_API_KEY = getRequiredEnv("OCR_SPACE_API_KEY");
 
-export async function extractTextFromImage(buffer: Buffer): Promise<string> {
+export async function extractTextFromImage(
+  buffer: Buffer,
+  filename: string,
+  mimetype: string,
+): Promise<string> {
   try {
     const formData = new FormData();
 
-    formData.append("file", buffer, { filename: "upload.pdf" });
+    formData.append("file", buffer, { filename, contentType: mimetype });
     formData.append("language", "eng");
     formData.append("isOverlayRequired", "false");
     formData.append("detectOrientation", "true");

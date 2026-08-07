@@ -210,7 +210,7 @@ router.post(
 
     // 4. Pass the verified file buffer to the background task tracker (ERROR FIXED ✅)
     waitUntil(
-      extractTextFromImage(file.buffer)
+      extractTextFromImage(file.buffer, file.originalname, file.mimetype)
         .then(async (text) => {
           document.ocr_text = text;
           document.ocr_status = "completed";
