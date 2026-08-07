@@ -36,7 +36,7 @@ export async function extractTextFromImage(
         ...formData.getHeaders(),
         apikey: OCR_SPACE_API_KEY,
       },
-      timeout: 7000,
+      timeout: 9500,
     });
 
     if (response.data.IsErroredOnProcessing) {
