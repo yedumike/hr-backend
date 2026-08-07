@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+} from "typeorm";
 import { Role } from "./Role";
 
 @Entity("users")
@@ -16,6 +22,11 @@ export class User {
   // pointing to a row in the roles table
   @ManyToOne(() => Role, (role) => role.users)
   role!: Role;
+
+  // forces the user to set a new password on their next login —
+  // true by default whenever HR creates an account with a temporary password
+  @Column({ type: "boolean", default: false })
+  must_change_password!: boolean;
 
   @CreateDateColumn({ type: "timestamp" })
   created_at!: Date; // auto-set by TypeORM when the row is first inserted
