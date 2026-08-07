@@ -61,11 +61,9 @@ router.post(
     }
 
     if (!validCategories.includes(category as DocumentCategory)) {
-      res
-        .status(400)
-        .json({
-          error: `category must be one of: ${validCategories.join(", ")}`,
-        });
+      res.status(400).json({
+        error: `category must be one of: ${validCategories.join(", ")}`,
+      });
       return;
     }
 
@@ -110,5 +108,47 @@ router.post(
     res.status(201).json({ document });
   },
 );
+
+// GET /documents?employee_id=xxx — list all documents for an employee
+router.get("/", authenticate, async (req: Request, res: Response) => {
+  const employeeId = req.query.employee_id;
+
+  if (!employeeId || typeof employeeId !== "string") {
+    res.status(400).json({ error: "employee_id query parameter is required" });
+    return;
+  }
+
+  const documentRepo = AppDataSource.getRepository(Document);
+  const documents = await documentRepo.find({
+    where: { employee: { id: employeeId } },
+    order: { uploaded_at: "DESC" },
+  });
+
+  res.json({ documents });
+});
+
+// GET /documents/:id — returns document metadata PLUS a fresh signed URL to view it
+router.get("/:id", authenticate, async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    res.status(400).json({ error: "Invalid document id" });
+    return;
+  }
+
+  const documentRepo = AppDataSource.getRepository(Document);
+  const document = await documentRepo.findOne({ where: { id } });
+
+  if (!document) {
+    res.status(404).json({ error: "Document not found" });
+    return;
+  }
+
+  // generate a fresh, time-limited signed URL — this is the ONLY way to
+  // actually view the file, since the bucket itself is private
+  const signedUrl = await getSignedFileUrl(document.file_url);
+
+  res.json({ document, signedUrl });
+});
 
 export default router;
