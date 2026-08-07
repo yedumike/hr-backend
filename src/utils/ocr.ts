@@ -1,7 +1,7 @@
 import axios from "axios";
 import FormData from "form-data";
 
-// same required-env-var pattern we've used throughout the project
+// Your clean validated environment variable setup
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -16,28 +16,33 @@ export async function extractTextFromImage(buffer: Buffer): Promise<string> {
   try {
     const formData = new FormData();
 
-    // We pass a generic filename so the API automatically detects the mime structure (e.g. PDF vs Image)
     formData.append("file", buffer, { filename: "upload.pdf" });
     formData.append("language", "eng");
     formData.append("isOverlayRequired", "false");
     formData.append("detectOrientation", "true");
     formData.append("scale", "true");
 
-    const response = await axios.post("https://ocr.space", formData, {
+    // Enforce split configuration parameters to stop string path mangling
+    const response = await axios({
+      method: "post",
+      url: "/parse/image",
+      baseURL: "https://api.ocr.space",
+      data: formData,
       headers: {
         ...formData.getHeaders(),
         apikey: OCR_SPACE_API_KEY,
       },
-      timeout: 7000, // Safely exits under Vercel's strict 10s ceiling
+      timeout: 7000,
     });
 
-    // Catch specific error payloads returned by the engine itself
     if (response.data.IsErroredOnProcessing) {
       const errorMsg = response.data.ErrorMessage?.[0] || "OCR engine error";
       throw new Error(`OCR.space Error: ${errorMsg}`);
     }
 
     const parsedResults = response.data.ParsedResults;
+
+    // Explicit array targeting ensures text is read from the first page
     if (parsedResults && parsedResults.length > 0) {
       return parsedResults[0].ParsedText || "";
     }
