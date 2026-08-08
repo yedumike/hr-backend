@@ -13,6 +13,7 @@ import certificationRoutes from "../src/routes/certification.routes";
 import dependentRoutes from "../src/routes/dependent.routes";
 import emergencyContactRoutes from "../src/routes/emergency-contact.routes";
 import documentRoutes from "../src/routes/document.routes";
+import searchRoutes from "../src/routes/search.routes";
 
 const app = express();
 
@@ -57,6 +58,6 @@ app.use("/certifications", certificationRoutes);
 app.use("/dependents", dependentRoutes);
 app.use("/emergency-contacts", emergencyContactRoutes);
 app.use("/documents", documentRoutes);
-
+app.use("/search", searchRoutes);
 // Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
 export default app;
