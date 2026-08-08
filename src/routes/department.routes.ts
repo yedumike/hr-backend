@@ -100,6 +100,24 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
   const department = await departmentRepo.findOne({
     where: { id },
     relations: { employees: true, head_of_department: true },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      is_active: true,
+      head_of_department: {
+        id: true,
+        first_name: true,
+        last_name: true,
+      },
+      employees: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        role_title: true,
+        status: true,
+      },
+    },
   });
 
   if (!department) {
