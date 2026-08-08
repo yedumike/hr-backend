@@ -141,33 +141,64 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   const employeeRepo = AppDataSource.getRepository(Employee);
 
   const includeTerminated = req.query.includeTerminated === "true";
+  const isAdmin = req.user!.role === "HR_ADMIN";
 
-  const employees = await employeeRepo.find({
-    // TypeORM's Not() operator excludes a value rather than matching one
-    where: includeTerminated ? {} : { status: Not("terminated") },
-    relations: { department: true, manager: true },
-  });
+  const restrictedSelect = {
+    id: true,
+    first_name: true,
+    last_name: true,
+    role_title: true,
+    status: true,
+    department: { id: true, name: true },
+    manager: { id: true, first_name: true, last_name: true },
+  } as const;
+
+  const employees = isAdmin
+    ? await employeeRepo.find({
+        where: includeTerminated ? {} : { status: Not("terminated") },
+        relations: { department: true, manager: true },
+      })
+    : await employeeRepo.find({
+        where: includeTerminated ? {} : { status: Not("terminated") },
+        relations: { department: true, manager: true },
+        select: restrictedSelect,
+      });
 
   res.json({ employees });
 });
+
 // get a single employee by ID
 router.get("/:id", authenticate, async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // req.params values are typed as `string | string[]` by Express,
-  // even though a route like "/:id" will only ever produce a single string
-  // at runtime. This check both narrows the type for TypeScript, and
-  // guards against the (very unlikely) edge case at runtime too.
   if (!id || Array.isArray(id)) {
     res.status(400).json({ error: "Invalid employee id" });
     return;
   }
 
   const employeeRepo = AppDataSource.getRepository(Employee);
-  const employee = await employeeRepo.findOne({
-    where: { id },
-    relations: { department: true, manager: true },
-  });
+  const isAdmin = req.user!.role === "HR_ADMIN";
+
+  const restrictedSelect = {
+    id: true,
+    first_name: true,
+    last_name: true,
+    role_title: true,
+    status: true,
+    department: { id: true, name: true },
+    manager: { id: true, first_name: true, last_name: true },
+  } as const;
+
+  const employee = isAdmin
+    ? await employeeRepo.findOne({
+        where: { id },
+        relations: { department: true, manager: true },
+      })
+    : await employeeRepo.findOne({
+        where: { id },
+        relations: { department: true, manager: true },
+        select: restrictedSelect,
+      });
 
   if (!employee) {
     res.status(404).json({ error: "Employee not found" });

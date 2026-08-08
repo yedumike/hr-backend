@@ -1,7 +1,7 @@
 import axios from "axios";
 import FormData from "form-data";
+import { PDFDocument } from "pdf-lib";
 
-// Your clean validated environment variable setup
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -11,6 +11,40 @@ function getRequiredEnv(name: string): string {
 }
 
 const OCR_SPACE_API_KEY = getRequiredEnv("OCR_SPACE_API_KEY");
+const MAX_PAGES = 2; // stay safely under OCR.space's 3-page free-tier limit
+
+// if the file is a PDF with more than MAX_PAGES, returns a trimmed buffer
+// containing only the first MAX_PAGES pages, plus a flag noting truncation.
+// non-PDF files (images) are returned unchanged, since they're single-page by nature.
+async function prepareBufferForOcr(
+  buffer: Buffer,
+  mimetype: string,
+): Promise<{ buffer: Buffer; wasTruncated: boolean; totalPages: number }> {
+  if (mimetype !== "application/pdf") {
+    return { buffer, wasTruncated: false, totalPages: 1 };
+  }
+
+  const originalPdf = await PDFDocument.load(buffer);
+  const totalPages = originalPdf.getPageCount();
+
+  if (totalPages <= MAX_PAGES) {
+    return { buffer, wasTruncated: false, totalPages };
+  }
+
+  // build a new PDF containing only the first MAX_PAGES pages
+  const trimmedPdf = await PDFDocument.create();
+  const pageIndices = Array.from({ length: MAX_PAGES }, (_, i) => i);
+  const copiedPages = await trimmedPdf.copyPages(originalPdf, pageIndices);
+  copiedPages.forEach((page) => trimmedPdf.addPage(page));
+
+  const trimmedBytes = await trimmedPdf.save();
+
+  return {
+    buffer: Buffer.from(trimmedBytes),
+    wasTruncated: true,
+    totalPages,
+  };
+}
 
 export async function extractTextFromImage(
   buffer: Buffer,
@@ -18,15 +52,22 @@ export async function extractTextFromImage(
   mimetype: string,
 ): Promise<string> {
   try {
-    const formData = new FormData();
+    const {
+      buffer: preparedBuffer,
+      wasTruncated,
+      totalPages,
+    } = await prepareBufferForOcr(buffer, mimetype);
 
-    formData.append("file", buffer, { filename, contentType: mimetype });
+    const formData = new FormData();
+    formData.append("file", preparedBuffer, {
+      filename,
+      contentType: mimetype,
+    });
     formData.append("language", "eng");
     formData.append("isOverlayRequired", "false");
     formData.append("detectOrientation", "true");
     formData.append("scale", "true");
 
-    // Enforce split configuration parameters to stop string path mangling
     const response = await axios({
       method: "post",
       url: "/parse/image",
@@ -45,83 +86,19 @@ export async function extractTextFromImage(
     }
 
     const parsedResults = response.data.ParsedResults;
+    let text =
+      parsedResults && parsedResults.length > 0
+        ? parsedResults[0].ParsedText || ""
+        : "";
 
-    // Explicit array targeting ensures text is read from the first page
-    if (parsedResults && parsedResults.length > 0) {
-      return parsedResults[0].ParsedText || "";
+    // append a clear note if we only processed part of the document
+    if (wasTruncated) {
+      text += `\n\n[Note: This document has ${totalPages} pages. Only the first ${MAX_PAGES} pages were processed for text extraction due to OCR provider limits.]`;
     }
 
-    return "";
+    return text;
   } catch (error: any) {
     console.error("OCR.space Execution Failure:", error.message || error);
     throw error;
   }
 }
-
-// import { createWorker } from "tesseract.js";
-
-// // runs OCR on an image/PDF buffer, returns the extracted text
-// // this is deliberately a standalone function so it can be called
-// // asynchronously after the upload response has already been sent
-// export async function extractTextFromImage(buffer: Buffer): Promise<string> {
-//   // createWorker spins up a Tesseract "worker" — loads the English
-//   // language model and prepares the recognition engine
-//   const worker = await createWorker("eng");
-
-//   try {
-//     const {
-//       data: { text },
-//     } = await worker.recognize(buffer);
-//     return text;
-//   } finally {
-//     // always terminate the worker when done, whether it succeeded or failed —
-//     // otherwise it stays in memory, wasting resources
-//     await worker.terminate();
-//   }
-// }
-
-// import { createWorker } from "tesseract.js";
-
-// export async function extractTextFromImage(buffer: Buffer): Promise<string> {
-//   // corePath must point to a DIRECTORY, not a specific .wasm/.js file —
-//   // pointing to one specific file (what we tried before) forces Tesseract
-//   // to use that exact variant regardless of what the runtime environment
-//   // actually supports, which is why it kept failing on Vercel's servers
-//   const worker = await createWorker("eng", 1, {
-//     corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0",
-//     langPath: "https://tessdata.projectnaptha.com/4.0.0",
-//   });
-
-//   try {
-//     const {
-//       data: { text },
-//     } = await worker.recognize(buffer);
-//     return text;
-//   } finally {
-//     await worker.terminate();
-//   }
-// }
-
-// import { createWorker } from "tesseract.js";
-
-// export async function extractTextFromImage(buffer: Buffer): Promise<string> {
-//   // load Tesseract's worker/core/language files from a CDN instead of
-//   // local node_modules — Vercel's bundler doesn't include these files
-//   // automatically since they're loaded dynamically, not via a static import
-//   const worker = await createWorker("eng", 1, {
-//     workerPath:
-//       "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
-//     corePath:
-//       "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
-//     langPath: "https://tessdata.projectnaptha.com/4.0.0",
-//   });
-
-//   try {
-//     const {
-//       data: { text },
-//     } = await worker.recognize(buffer);
-//     return text;
-//   } finally {
-//     await worker.terminate();
-//   }
-// }

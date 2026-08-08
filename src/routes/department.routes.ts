@@ -73,10 +73,8 @@ router.post(
 // (needed for things like populating a dropdown when creating an employee)
 router.get("/", authenticate, async (req: Request, res: Response) => {
   const departmentRepo = AppDataSource.getRepository(Department);
+  const employeeRepo = AppDataSource.getRepository(Employee);
 
-  // req.query values are typed loosely by Express (string | string[] | undefined),
-  // same reasoning as req.params — so we compare directly against the string "true"
-  // rather than trying to use it as a boolean
   const includeInactive = req.query.includeInactive === "true";
 
   const departments = await departmentRepo.find({
@@ -84,7 +82,19 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     relations: { head_of_department: true },
   });
 
-  res.json({ departments });
+  // attach an employee count to each department — only counting
+  // non-terminated employees, consistent with how we treat "active" elsewhere
+  const departmentsWithCounts = await Promise.all(
+    departments.map(async (department) => {
+      const employeeCount = await employeeRepo.count({
+        where: { department: { id: department.id }, status: Not("terminated") },
+      });
+
+      return { ...department, employeeCount };
+    }),
+  );
+
+  res.json({ departments: departmentsWithCounts });
 });
 
 // single department lookup
@@ -100,6 +110,24 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
   const department = await departmentRepo.findOne({
     where: { id },
     relations: { employees: true, head_of_department: true },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      is_active: true,
+      head_of_department: {
+        id: true,
+        first_name: true,
+        last_name: true,
+      },
+      employees: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        role_title: true,
+        status: true,
+      },
+    },
   });
 
   if (!department) {
