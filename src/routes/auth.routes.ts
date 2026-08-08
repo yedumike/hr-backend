@@ -2,7 +2,12 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
-import { signAccessToken, signRefreshToken } from "../utils/jwt";
+import {
+  JwtPayload,
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "../utils/jwt";
 import { authenticate } from "../middleware/authenticate";
 
 const router = Router();
@@ -138,5 +143,41 @@ router.post(
     res.json({ message: "Password changed successfully" });
   },
 );
+
+router.post("/refresh", async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refresh_token as string | undefined;
+
+  if (!refreshToken) {
+    res.status(401).json({ error: "No refresh token provided" });
+    return;
+  }
+
+  let payload: JwtPayload;
+  try {
+    payload = verifyRefreshToken(refreshToken);
+  } catch {
+    res.status(401).json({ error: "Invalid or expired refresh token" });
+    return;
+  }
+
+  // issue a fresh access token using the same user info from the refresh token
+  const newAccessToken = signAccessToken({
+    userId: payload.userId,
+    role: payload.role,
+  });
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none" as const,
+  };
+
+  res.cookie("access_token", newAccessToken, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000,
+  });
+
+  res.json({ message: "Access token refreshed" });
+});
 
 export default router;

@@ -125,6 +125,8 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
         first_name: true,
         last_name: true,
         role_title: true,
+        phone: true,
+        personal_email: true,
         status: true,
       },
     },
