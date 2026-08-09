@@ -60,4 +60,7 @@ app.use("/emergency-contacts", emergencyContactRoutes);
 app.use("/documents", documentRoutes);
 app.use("/search", searchRoutes);
 // Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
+
+export const maxDuration = 30;
+
 export default app;
