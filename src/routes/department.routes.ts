@@ -13,7 +13,8 @@ const router = Router();
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("departments:create"),
   async (req: Request, res: Response) => {
     const { name, description, head_of_department_id } = req.body as {
       name?: string;
@@ -107,30 +108,53 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
   }
 
   const departmentRepo = AppDataSource.getRepository(Department);
-  const department = await departmentRepo.findOne({
-    where: { id },
-    relations: { employees: true, head_of_department: true },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      is_active: true,
-      head_of_department: {
-        id: true,
-        first_name: true,
-        last_name: true,
-      },
-      employees: {
-        id: true,
-        first_name: true,
-        last_name: true,
-        role_title: true,
-        phone: true,
-        personal_email: true,
-        status: true,
-      },
-    },
-  });
+  const canViewSensitive = req.user!.permissions.includes(
+    "employees:view_sensitive",
+  );
+
+  const restrictedEmployeeSelect = {
+    id: true,
+    first_name: true,
+    last_name: true,
+    role_title: true,
+    status: true,
+  } as const;
+
+  const fullEmployeeSelect = {
+    id: true,
+    first_name: true,
+    last_name: true,
+    role_title: true,
+    phone: true,
+    personal_email: true,
+    status: true,
+  } as const;
+
+  const department = canViewSensitive
+    ? await departmentRepo.findOne({
+        where: { id },
+        relations: { employees: true, head_of_department: true },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          is_active: true,
+          head_of_department: { id: true, first_name: true, last_name: true },
+          employees: fullEmployeeSelect,
+        },
+      })
+    : await departmentRepo.findOne({
+        where: { id },
+        relations: { employees: true, head_of_department: true },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          is_active: true,
+          head_of_department: { id: true, first_name: true, last_name: true },
+          employees: restrictedEmployeeSelect,
+        },
+      });
 
   if (!department) {
     res.status(404).json({ error: "Department not found" });
@@ -144,7 +168,8 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
 router.put(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("departments:update"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -214,7 +239,8 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("departments:delete"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
