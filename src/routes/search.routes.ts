@@ -42,7 +42,7 @@ function buildOcrSnippet(
   return snippet;
 }
 
-router.get("/search", authenticate, async (req: Request, res: Response) => {
+router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
     const q = req.query.q;
     const type = req.query.type;
