@@ -5,6 +5,7 @@ import {
   OneToMany,
   ManyToMany,
   JoinTable,
+  UpdateDateColumn,
 } from "typeorm";
 import { User } from "./User";
 import { Permission } from "./Permission";
@@ -15,19 +16,24 @@ export class Role {
   id!: string;
 
   @Column({ type: "varchar", unique: true })
-  name!: string; // e.g. "HR_ADMIN", "MANAGER", "EMPLOYEE", or any custom role name
+  name!: string;
 
   @OneToMany(() => User, (user) => user.role)
   users!: User[];
 
-  // many-to-many: a role can have many permissions, a permission can belong to many roles
   @ManyToMany(() => Permission)
   @JoinTable({
-    name: "role_permissions", // explicit name for the join table
+    name: "role_permissions",
     joinColumn: { name: "role_id", referencedColumnName: "id" },
     inverseJoinColumn: { name: "permission_id", referencedColumnName: "id" },
   })
   permissions!: Permission[];
+
+  // automatically updates any time this row is saved — including when
+  // its permissions relation changes. Used to detect "this token's
+  // permission snapshot is now stale" in the authenticate middleware.
+  @UpdateDateColumn({ type: "timestamp" })
+  permissions_updated_at!: Date;
 }
 
 // Why @JoinTable only goes on Role, not Permission
