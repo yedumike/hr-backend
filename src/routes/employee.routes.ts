@@ -362,6 +362,7 @@ router.post(
     }
 
     const { role } = req.body as CreateAccountBody;
+    const roleName = role ?? "EMPLOYEE";
 
     if (!role) {
       res.status(400).json({ error: "role is required" });
@@ -387,7 +388,7 @@ router.post(
       return;
     }
 
-    const roleEntity = await roleRepo.findOne({ where: { name: role } });
+    const roleEntity = await roleRepo.findOne({ where: { name: roleName } });
     if (!roleEntity) {
       res.status(400).json({ error: "Invalid role specified" });
       return;

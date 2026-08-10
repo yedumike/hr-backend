@@ -229,4 +229,19 @@ router.delete(
   },
 );
 
+// LIST NAMES ONLY — GET /roles/names
+// Lightweight, scoped to employees:create_account (not roles:manage) so
+// HR_ADMIN can populate a role dropdown without needing full role-management access.
+// Must be registered before GET /:id, or Express will match "names" as an :id param.
+router.get(
+  "/names",
+  authenticate,
+  authorize("employees:create_account"),
+  async (req: Request, res: Response) => {
+    const roleRepo = AppDataSource.getRepository(Role);
+    const roles = await roleRepo.find({ select: { id: true, name: true } });
+    res.json({ roles });
+  },
+);
+
 export default router;
