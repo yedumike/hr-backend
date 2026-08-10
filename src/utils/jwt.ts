@@ -19,6 +19,8 @@ const REFRESH_SECRET = getRequiredEnv("JWT_REFRESH_SECRET");
 export interface JwtPayload {
   userId: string;
   role: string;
+  permissions: string[];
+  permissionsSnapshotAt: string; // ISO timestamp of the role's permissions_updated_at when this token was issued
 }
 
 export function signAccessToken(payload: JwtPayload): string {
