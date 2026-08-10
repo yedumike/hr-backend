@@ -31,7 +31,8 @@ interface CreateEmployeeBody {
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("employees:create"),
   async (req: Request, res: Response) => {
     const {
       first_name,
@@ -141,7 +142,10 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   const employeeRepo = AppDataSource.getRepository(Employee);
 
   const includeTerminated = req.query.includeTerminated === "true";
-  const isAdmin = req.user!.role === "HR_ADMIN";
+  // const isAdmin = req.user!.role === "HR_ADMIN";
+  const isAdmin =
+    req.user!.permissions.includes("employees:view_sensitive") ||
+    req.user!.role === "SUPER_ADMIN";
 
   const restrictedSelect = {
     id: true,
@@ -177,7 +181,10 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
   }
 
   const employeeRepo = AppDataSource.getRepository(Employee);
-  const isAdmin = req.user!.role === "HR_ADMIN";
+  // const isAdmin = req.user!.role === "HR_ADMIN";
+  const isAdmin =
+    req.user!.permissions.includes("employees:view_sensitive") ||
+    req.user!.role === "SUPER_ADMIN";
 
   const restrictedSelect = {
     id: true,
@@ -226,7 +233,8 @@ interface UpdateEmployeeBody {
 router.put(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("employees:update"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -303,7 +311,8 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("employees:delete"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -342,7 +351,8 @@ interface CreateAccountBody {
 router.post(
   "/:id/create-account",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("employees:create_account"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -353,10 +363,7 @@ router.post(
 
     const { role } = req.body as CreateAccountBody;
 
-    if (!role) {
-      res.status(400).json({ error: "role is required" });
-      return;
-    }
+    const roleName = role ?? "EMPLOYEE";
 
     const employeeRepo = AppDataSource.getRepository(Employee);
     const userRepo = AppDataSource.getRepository(User);
@@ -377,7 +384,7 @@ router.post(
       return;
     }
 
-    const roleEntity = await roleRepo.findOne({ where: { name: role } });
+    const roleEntity = await roleRepo.findOne({ where: { name: roleName } });
     if (!roleEntity) {
       res.status(400).json({ error: "Invalid role specified" });
       return;

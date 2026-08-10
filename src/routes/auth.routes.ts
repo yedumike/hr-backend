@@ -28,7 +28,7 @@ router.post("/login", async (req: Request, res: Response) => {
   // (otherwise user.role would just be an unpopulated reference)
   const user = await userRepo.findOne({
     where: { email },
-    relations: { role: true },
+    relations: { role: { permissions: true } },
   });
 
   // deliberately vague error — don't reveal whether the email exists or the
@@ -48,7 +48,12 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 
   // this is the data embedded inside both tokens — kept minimal
-  const payload = { userId: user.id, role: user.role.name };
+  const payload: JwtPayload = {
+    userId: user.id,
+    role: user.role.name,
+    permissions: user.role.permissions.map((p) => p.name),
+    permissionsSnapshotAt: user.role.permissions_updated_at.toISOString(),
+  };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
@@ -152,28 +157,41 @@ router.post("/refresh", async (req: Request, res: Response) => {
     return;
   }
 
-  let payload: JwtPayload;
+  let oldPayload: JwtPayload;
   try {
-    payload = verifyRefreshToken(refreshToken);
+    oldPayload = verifyRefreshToken(refreshToken);
   } catch {
     res.status(401).json({ error: "Invalid or expired refresh token" });
     return;
   }
 
-  // issue a fresh access token using the same user info from the refresh token
-  const newAccessToken = signAccessToken({
-    userId: payload.userId,
-    role: payload.role,
+  // always fetch the user's CURRENT role + permissions fresh from the DB,
+  // regardless of what was in the old token — this is what makes permission
+  // changes take effect on refresh, not just at login
+  const userRepo = AppDataSource.getRepository(User);
+  const user = await userRepo.findOne({
+    where: { id: oldPayload.userId },
+    relations: { role: { permissions: true } },
   });
 
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
+
+  const newPayload: JwtPayload = {
+    userId: user.id,
+    role: user.role.name,
+    permissions: user.role.permissions.map((p) => p.name),
+    permissionsSnapshotAt: user.role.permissions_updated_at.toISOString(),
   };
 
+  const newAccessToken = signAccessToken(newPayload);
+
   res.cookie("access_token", newAccessToken, {
-    ...cookieOptions,
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
     maxAge: 15 * 60 * 1000,
   });
 

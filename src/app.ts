@@ -15,6 +15,9 @@ import dependentRoutes from "./routes/dependent.routes";
 import emergencyContactRoutes from "./routes/emergency-contact.routes";
 import documentRoutes from "./routes/document.routes";
 import searchRoutes from "./routes/search.routes";
+import roleRoutes from "./routes/role.routes";
+import permissionRoutes from "./routes/permission.routes";
+
 dotenv.config();
 
 const app = express();
@@ -49,6 +52,9 @@ app.use("/dependents", dependentRoutes);
 app.use("/emergency-contacts", emergencyContactRoutes);
 app.use("/documents", documentRoutes);
 app.use("/search", searchRoutes);
+app.use("/roles", roleRoutes);
+app.use("/permissions", permissionRoutes);
+
 // connect to the database first, and only start listening for requests
 // once that succeeds — avoids the server accepting traffic before it can query anything
 AppDataSource.initialize()
