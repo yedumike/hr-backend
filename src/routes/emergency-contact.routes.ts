@@ -18,7 +18,8 @@ interface CreateEmergencyContactBody {
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("emergency_contacts:create"),
   async (req: Request, res: Response) => {
     const { employee_id, name, relationship, phone, is_next_of_kin } =
       req.body as CreateEmergencyContactBody;
@@ -61,22 +62,29 @@ router.post(
   },
 );
 
-router.get("/", authenticate, async (req: Request, res: Response) => {
-  const employeeId = req.query.employee_id;
+router.get(
+  "/",
+  authenticate,
+  authorize("emergency_contacts:view"),
+  async (req: Request, res: Response) => {
+    const employeeId = req.query.employee_id;
 
-  if (!employeeId || typeof employeeId !== "string") {
-    res.status(400).json({ error: "employee_id query parameter is required" });
-    return;
-  }
+    if (!employeeId || typeof employeeId !== "string") {
+      res
+        .status(400)
+        .json({ error: "employee_id query parameter is required" });
+      return;
+    }
 
-  const contactRepo = AppDataSource.getRepository(EmergencyContact);
-  const contacts = await contactRepo.find({
-    where: { employee: { id: employeeId } },
-    order: { created_at: "DESC" },
-  });
+    const contactRepo = AppDataSource.getRepository(EmergencyContact);
+    const contacts = await contactRepo.find({
+      where: { employee: { id: employeeId } },
+      order: { created_at: "DESC" },
+    });
 
-  res.json({ emergencyContacts: contacts });
-});
+    res.json({ emergencyContacts: contacts });
+  },
+);
 
 interface UpdateEmergencyContactBody {
   name?: string;
@@ -88,7 +96,8 @@ interface UpdateEmergencyContactBody {
 router.put(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("emergency_contacts:update"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -133,7 +142,8 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("emergency_contacts:delete"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
