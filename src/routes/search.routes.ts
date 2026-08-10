@@ -55,7 +55,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
     const q = req.query.q;
     const type = req.query.type;
-
+    const rawLimit = req.query.limit;
     // ============================================================
     // VALIDATE SEARCH QUERY
     // ============================================================
@@ -95,6 +95,37 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
           )}. Must be one of: ${validTypes.join(", ")}`,
         });
       }
+    }
+
+    // ============================================================
+    // VALIDATE LIMIT
+    // ============================================================
+
+    const DEFAULT_LIMIT = 3;
+    const MAX_LIMIT = 50;
+
+    let limit = DEFAULT_LIMIT;
+
+    if (rawLimit !== undefined) {
+      if (typeof rawLimit !== "string") {
+        return res.status(400).json({
+          error: "limit must be a positive integer",
+        });
+      }
+
+      const parsedLimit = Number(rawLimit);
+
+      if (
+        !Number.isInteger(parsedLimit) ||
+        parsedLimit < 1 ||
+        parsedLimit > MAX_LIMIT
+      ) {
+        return res.status(400).json({
+          error: `limit must be an integer between 1 and ${MAX_LIMIT}`,
+        });
+      }
+
+      limit = parsedLimit;
     }
 
     // ============================================================
@@ -157,7 +188,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
               }
             : {}),
         },
-        take: 20,
+        take: limit,
       });
 
       results.employees = allEmployees.map((emp) => {
@@ -228,7 +259,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
           description: true,
           is_active: true,
         },
-        take: 20,
+        take: limit,
       });
 
       results.departments = allDepartments.map((dept) => {
@@ -276,7 +307,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
             last_name: true,
           },
         },
-        take: 20,
+        take: limit,
       });
 
       results.certifications = allCertifications.map((cert) => {
@@ -335,7 +366,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
             last_name: true,
           },
         },
-        take: 20,
+        take: limit,
       });
 
       results.education = allEducation.map((edu) => {
@@ -397,7 +428,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
             last_name: true,
           },
         },
-        take: 20,
+        take: limit,
       });
 
       results.documents = allDocuments.map((doc) => ({
