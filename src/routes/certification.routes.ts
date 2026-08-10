@@ -19,7 +19,8 @@ interface CreateCertificationBody {
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("certifications:create"),
   async (req: Request, res: Response) => {
     const { employee_id, name, issued_by, issue_date, expiry_date } =
       req.body as CreateCertificationBody;
@@ -61,22 +62,29 @@ router.post(
 );
 
 // LIST — GET /certifications?employee_id=xxx
-router.get("/", authenticate, async (req: Request, res: Response) => {
-  const employeeId = req.query.employee_id;
+router.get(
+  "/",
+  authenticate,
+  authorize("certifications:view"),
+  async (req: Request, res: Response) => {
+    const employeeId = req.query.employee_id;
 
-  if (!employeeId || typeof employeeId !== "string") {
-    res.status(400).json({ error: "employee_id query parameter is required" });
-    return;
-  }
+    if (!employeeId || typeof employeeId !== "string") {
+      res
+        .status(400)
+        .json({ error: "employee_id query parameter is required" });
+      return;
+    }
 
-  const certRepo = AppDataSource.getRepository(Certification);
-  const certifications = await certRepo.find({
-    where: { employee: { id: employeeId } },
-    order: { issue_date: "DESC" },
-  });
+    const certRepo = AppDataSource.getRepository(Certification);
+    const certifications = await certRepo.find({
+      where: { employee: { id: employeeId } },
+      order: { issue_date: "DESC" },
+    });
 
-  res.json({ certifications });
-});
+    res.json({ certifications });
+  },
+);
 
 interface UpdateCertificationBody {
   name?: string;
@@ -89,7 +97,8 @@ interface UpdateCertificationBody {
 router.put(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("certifications:update"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -136,7 +145,8 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("certifications:delete"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
