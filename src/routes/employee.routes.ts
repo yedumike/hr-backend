@@ -362,12 +362,8 @@ router.post(
     }
 
     const { role } = req.body as CreateAccountBody;
-    const roleName = role ?? "EMPLOYEE";
 
-    if (!role) {
-      res.status(400).json({ error: "role is required" });
-      return;
-    }
+    const roleName = role ?? "EMPLOYEE";
 
     const employeeRepo = AppDataSource.getRepository(Employee);
     const userRepo = AppDataSource.getRepository(User);
