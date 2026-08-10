@@ -154,6 +154,39 @@ async function seed() {
     console.log("SUPER_ADMIN already exists, skipping.");
   }
 
+  // create test accounts for the other roles, useful for manual testing
+  // of permission-based access control
+  const testAccounts = [
+    { email: "hradmin@yourcompany.com", roleName: "HR_ADMIN" },
+    { email: "manager@yourcompany.com", roleName: "MANAGER" },
+  ];
+
+  for (const account of testAccounts) {
+    const existing = await userRepo.findOne({
+      where: { email: account.email },
+    });
+
+    if (!existing) {
+      const role = roles[account.roleName];
+      if (!role) {
+        throw new Error(`Role not found for test account: ${account.roleName}`);
+      }
+
+      const passwordHash = await bcrypt.hash("ChangeMe123!", 10);
+      const user = userRepo.create({
+        email: account.email,
+        password_hash: passwordHash,
+        role,
+      });
+      await userRepo.save(user);
+      console.log(
+        `Created test account: ${account.email} / ChangeMe123! (${account.roleName})`,
+      );
+    } else {
+      console.log(`Test account already exists, skipping: ${account.email}`);
+    }
+  }
+
   await AppDataSource.destroy();
 }
 
