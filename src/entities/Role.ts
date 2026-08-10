@@ -1,19 +1,39 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToMany,
+  JoinTable,
+} from "typeorm";
 import { User } from "./User";
+import { Permission } from "./Permission";
 
-@Entity("roles") // maps this class to a table named "roles"
+@Entity("roles")
 export class Role {
   @PrimaryGeneratedColumn("uuid")
-  // the "!" tells TS "trust me, this gets set" — TypeORM assigns it when it
-  // loads a row from the DB, not via a constructor, so TS can't verify it itself
   id!: string;
 
   @Column({ type: "varchar", unique: true })
-  name!: string; // e.g. "HR_ADMIN" | "MANAGER" | "EMPLOYEE"
+  name!: string; // e.g. "HR_ADMIN", "MANAGER", "EMPLOYEE", or any custom role name
 
-  // this is the "reverse" side of the relationship defined in User.ts —
-  // it doesn't create a column, it just lets you write `someRole.users` in code
-  // to get all Users that have this role
   @OneToMany(() => User, (user) => user.role)
   users!: User[];
+
+  // many-to-many: a role can have many permissions, a permission can belong to many roles
+  @ManyToMany(() => Permission)
+  @JoinTable({
+    name: "role_permissions", // explicit name for the join table
+    joinColumn: { name: "role_id", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "permission_id", referencedColumnName: "id" },
+  })
+  permissions!: Permission[];
 }
+
+// Why @JoinTable only goes on Role, not Permission
+
+// In a @ManyToMany relationship, TypeORM needs exactly one side to "own"
+// the join table definition — we chose Role as the owning side, since roles
+// are what get permissions attached to them, not the other way around.
+// Permission doesn't need any decorator changes at all for
+// this relationship to work.

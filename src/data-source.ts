@@ -13,6 +13,7 @@ import { Certification } from "./entities/Certification";
 import { Dependent } from "./entities/Dependent";
 import { EmergencyContact } from "./entities/EmergencyContact";
 import { Document } from "./entities/Document";
+import { Permission } from "./entities/Permission";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ export const AppDataSource = new DataSource({
     Dependent,
     EmergencyContact,
     Document,
+    Permission,
   ],
   // migrations: ["src/migrations/*.ts"],
   // migrations: [],
