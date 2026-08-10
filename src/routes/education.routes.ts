@@ -19,7 +19,8 @@ interface CreateEducationBody {
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("education:create"),
   async (req: Request, res: Response) => {
     const { employee_id, institution, degree, field_of_study, year_completed } =
       req.body as CreateEducationBody;
@@ -70,22 +71,29 @@ router.post(
 // employee_id is required as a query param, since without it there's no
 // sensible default (returning every education record for every employee
 // isn't useful, and isn't something the frontend would realistically need)
-router.get("/", authenticate, async (req: Request, res: Response) => {
-  const employeeId = req.query.employee_id;
+router.get(
+  "/",
+  authenticate,
+  authorize("education:view"),
+  async (req: Request, res: Response) => {
+    const employeeId = req.query.employee_id;
 
-  if (!employeeId || typeof employeeId !== "string") {
-    res.status(400).json({ error: "employee_id query parameter is required" });
-    return;
-  }
+    if (!employeeId || typeof employeeId !== "string") {
+      res
+        .status(400)
+        .json({ error: "employee_id query parameter is required" });
+      return;
+    }
 
-  const educationRepo = AppDataSource.getRepository(EducationRecord);
-  const records = await educationRepo.find({
-    where: { employee: { id: employeeId } },
-    order: { year_completed: "DESC" },
-  });
+    const educationRepo = AppDataSource.getRepository(EducationRecord);
+    const records = await educationRepo.find({
+      where: { employee: { id: employeeId } },
+      order: { year_completed: "DESC" },
+    });
 
-  res.json({ educationRecords: records });
-});
+    res.json({ educationRecords: records });
+  },
+);
 
 interface UpdateEducationBody {
   institution?: string;
@@ -98,7 +106,8 @@ interface UpdateEducationBody {
 router.put(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("education:update"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -146,7 +155,8 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("education:delete"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
