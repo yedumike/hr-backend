@@ -47,7 +47,8 @@ interface UploadBody {
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("documents:upload"),
   upload.single("file"),
   validateOcrFileSize,
   async (req: Request, res: Response) => {
@@ -138,45 +139,57 @@ router.post(
 );
 
 // GET /documents?employee_id=xxx — list all documents for an employee
-router.get("/", authenticate, async (req: Request, res: Response) => {
-  const employeeId = req.query.employee_id;
+router.get(
+  "/",
+  authenticate,
+  authorize("documents:view"),
+  async (req: Request, res: Response) => {
+    const employeeId = req.query.employee_id;
 
-  if (!employeeId || typeof employeeId !== "string") {
-    res.status(400).json({ error: "employee_id query parameter is required" });
-    return;
-  }
+    if (!employeeId || typeof employeeId !== "string") {
+      res
+        .status(400)
+        .json({ error: "employee_id query parameter is required" });
+      return;
+    }
 
-  const documentRepo = AppDataSource.getRepository(Document);
-  const documents = await documentRepo.find({
-    where: { employee: { id: employeeId } },
-    order: { uploaded_at: "DESC" },
-  });
+    const documentRepo = AppDataSource.getRepository(Document);
+    const documents = await documentRepo.find({
+      where: { employee: { id: employeeId } },
+      order: { uploaded_at: "DESC" },
+    });
 
-  res.json({ documents });
-});
+    res.json({ documents });
+  },
+);
 
 // GET /documents/:id — returns document metadata PLUS a fresh signed URL to view it
-router.get("/:id", authenticate, async (req: Request, res: Response) => {
-  const { id } = req.params;
+router.get(
+  "/:id",
+  authenticate,
+  authorize("documents:view"),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
 
-  if (!id || Array.isArray(id)) {
-    res.status(400).json({ error: "Invalid document id" });
-    return;
-  }
+    if (!id || Array.isArray(id)) {
+      res.status(400).json({ error: "Invalid document id" });
+      return;
+    }
 
-  const documentRepo = AppDataSource.getRepository(Document);
-  const document = await documentRepo.findOne({ where: { id } });
+    const documentRepo = AppDataSource.getRepository(Document);
+    const document = await documentRepo.findOne({ where: { id } });
 
-  if (!document) {
-    res.status(404).json({ error: "Document not found" });
-    return;
-  }
+    if (!document) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
 
-  // generate a fresh, time-limited signed URL — this is the ONLY way to
-  // actually view the file, since the bucket itself is private
-  const signedUrl = await getSignedFileUrl(document.file_url);
+    // generate a fresh, time-limited signed URL — this is the ONLY way to
+    // actually view the file, since the bucket itself is private
+    const signedUrl = await getSignedFileUrl(document.file_url);
 
-  res.json({ document, signedUrl });
-});
+    res.json({ document, signedUrl });
+  },
+);
 
 export default router;
