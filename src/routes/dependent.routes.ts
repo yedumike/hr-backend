@@ -18,7 +18,8 @@ interface CreateDependentBody {
 router.post(
   "/",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("dependents:create"),
   async (req: Request, res: Response) => {
     const { employee_id, name, relationship, date_of_birth, contact } =
       req.body as CreateDependentBody;
@@ -59,22 +60,29 @@ router.post(
   },
 );
 
-router.get("/", authenticate, async (req: Request, res: Response) => {
-  const employeeId = req.query.employee_id;
+router.get(
+  "/",
+  authenticate,
+  authorize("dependents:view"),
+  async (req: Request, res: Response) => {
+    const employeeId = req.query.employee_id;
 
-  if (!employeeId || typeof employeeId !== "string") {
-    res.status(400).json({ error: "employee_id query parameter is required" });
-    return;
-  }
+    if (!employeeId || typeof employeeId !== "string") {
+      res
+        .status(400)
+        .json({ error: "employee_id query parameter is required" });
+      return;
+    }
 
-  const dependentRepo = AppDataSource.getRepository(Dependent);
-  const dependents = await dependentRepo.find({
-    where: { employee: { id: employeeId } },
-    order: { created_at: "DESC" },
-  });
+    const dependentRepo = AppDataSource.getRepository(Dependent);
+    const dependents = await dependentRepo.find({
+      where: { employee: { id: employeeId } },
+      order: { created_at: "DESC" },
+    });
 
-  res.json({ dependents });
-});
+    res.json({ dependents });
+  },
+);
 
 interface UpdateDependentBody {
   name?: string;
@@ -86,7 +94,8 @@ interface UpdateDependentBody {
 router.put(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("dependents:update"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -130,7 +139,8 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("HR_ADMIN"),
+  // authorize("HR_ADMIN"),
+  authorize("dependents:delete"),
   async (req: Request, res: Response) => {
     const { id } = req.params;
 
