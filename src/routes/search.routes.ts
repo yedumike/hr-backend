@@ -21,25 +21,34 @@ const validTypes = [
 function buildOcrSnippet(
   text: string | null,
   term: string,
-  radius = 40,
+  maxLength = 120,
 ): string {
   if (!text) return "";
 
-  const index = text.toLowerCase().indexOf(term.toLowerCase());
+  // Normalize OCR whitespace first.
+  const cleanedText = text
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
+  const lowerText = cleanedText.toLowerCase();
+  const lowerTerm = term.toLowerCase();
+
+  const index = lowerText.indexOf(lowerTerm);
+
+  // If somehow the term isn't found, return the beginning.
   if (index === -1) {
-    return text.slice(0, radius * 2) + "...";
+    return cleanedText.length > maxLength
+      ? `${cleanedText.slice(0, maxLength).trimEnd()}...`
+      : cleanedText;
   }
 
-  const start = Math.max(0, index - radius);
-  const end = Math.min(text.length, index + term.length + radius);
+  // Start exactly at the matched word.
+  const snippet = cleanedText.slice(index, index + maxLength).trim();
 
-  let snippet = text.slice(start, end);
-
-  if (start > 0) snippet = "..." + snippet;
-  if (end < text.length) snippet += "...";
-
-  return snippet;
+  return `${index > 0 ? "..." : ""}${snippet}${
+    index + maxLength < cleanedText.length ? "..." : ""
+  }`;
 }
 
 router.get("/", authenticate, async (req: Request, res: Response) => {
