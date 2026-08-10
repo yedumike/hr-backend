@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken, JwtPayload } from "../utils/jwt";
+import { AppDataSource } from "../data-source";
+import { Role } from "../entities/Role";
 
 // Express's Request type doesn't know about a "user" property by default —
 // this block adds it globally, so `req.user` is recognized everywhere in the project
@@ -16,21 +18,40 @@ declare global {
 // It checks: "does this request have a valid access token cookie?"
 // If yes -> attaches the decoded user info to req.user, and lets the request continue (next())
 // If no  -> stops the request here with a 401, the route handler never runs
-export function authenticate(req: Request, res: Response, next: NextFunction) {
-  // req.cookies is populated by the cookie-parser middleware we'll wire up in app.ts
-  // we're being explicit about the type here since req.cookies itself is loosely typed
+export async function authenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const token = req.cookies?.access_token as string | undefined;
 
   if (!token) {
     res.status(401).json({ error: "Not authenticated" });
-    return; // important: stop execution here, don't call next()
+    return;
   }
 
   try {
-    // verifyAccessToken throws if the token is expired, tampered with, or invalid
     const payload = verifyAccessToken(token);
+
+    // SUPER_ADMIN bypasses the staleness check entirely — always trusted
+    if (payload.role !== "SUPER_ADMIN") {
+      const roleRepo = AppDataSource.getRepository(Role);
+      const role = await roleRepo.findOne({ where: { name: payload.role } });
+
+      if (
+        role &&
+        role.permissions_updated_at.toISOString() !==
+          payload.permissionsSnapshotAt
+      ) {
+        res.status(401).json({
+          error: "Permissions have changed, please refresh your session",
+        });
+        return;
+      }
+    }
+
     req.user = payload;
-    next(); // token is valid — allow the request to proceed to the actual route
+    next();
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });
   }
@@ -39,13 +60,28 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
 // A second, separate middleware — used AFTER authenticate on routes that
 // should only be accessible to specific roles.
 // Usage example (later): router.get("/admin-only", authenticate, authorize("HR_ADMIN"), handler)
-export function authorize(...allowedRoles: string[]) {
+export function authorize(...requiredPermissions: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    // if authenticate didn't run first, req.user won't exist — treat as forbidden
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
+
+    // SUPER_ADMIN always passes, regardless of permission list
+    if (req.user.role === "SUPER_ADMIN") {
+      next();
+      return;
+    }
+
+    const hasPermission = requiredPermissions.every((perm) =>
+      req.user!.permissions.includes(perm),
+    );
+
+    if (!hasPermission) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
     next();
   };
 }
