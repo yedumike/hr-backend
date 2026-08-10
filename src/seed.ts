@@ -1,91 +1,163 @@
-import "reflect-metadata"; // must be the very first import — TypeORM's decorators rely on this being loaded before anything else
+import "reflect-metadata";
 import { AppDataSource } from "./data-source";
 import { Role } from "./entities/Role";
+import { Permission } from "./entities/Permission";
 import { User } from "./entities/User";
-import bcrypt from "bcrypt"; // used to hash passwords — we never store plain text passwords in the DB
+import bcrypt from "bcrypt";
+
+// the full list of permissions our system understands — this is the
+// authoritative, code-defined list; which ROLE has which permission is
+// what's actually dynamic/data-driven
+const ALL_PERMISSIONS = [
+  // Employees
+  "employees:create",
+  "employees:view",
+  "employees:view_sensitive",
+  "employees:update",
+  "employees:delete",
+  "employees:create_account",
+  // Departments
+  "departments:create",
+  "departments:view",
+  "departments:update",
+  "departments:delete",
+  // Education & Certifications
+  "education:create",
+  "education:view",
+  "education:update",
+  "education:delete",
+  "certifications:create",
+  "certifications:view",
+  "certifications:update",
+  "certifications:delete",
+  // Family & Emergency
+  "dependents:create",
+  "dependents:view",
+  "dependents:update",
+  "dependents:delete",
+  "emergency_contacts:create",
+  "emergency_contacts:view",
+  "emergency_contacts:update",
+  "emergency_contacts:delete",
+  // Documents
+  "documents:upload",
+  "documents:view",
+  "documents:delete",
+  // Audit & Reporting
+  "audit_logs:view",
+  "dashboard:view_stats",
+  // Administration
+  "roles:manage",
+  "users:manage",
+];
+
+// default permission sets per role — HR_ADMIN gets everything except
+// roles:manage (shouldn't redefine the permission system itself).
+// MANAGER is read-only across the board. EMPLOYEE starts with nothing,
+// pending the self-service/ownership decision we'll build later.
+const ROLE_DEFAULTS: Record<string, string[]> = {
+  HR_ADMIN: ALL_PERMISSIONS.filter((p) => p !== "roles:manage"),
+  MANAGER: [
+    "employees:view",
+    "education:view",
+    "certifications:view",
+    "dependents:view",
+    "emergency_contacts:view",
+    "documents:view",
+    "dashboard:view_stats",
+  ],
+  EMPLOYEE: [],
+};
 
 async function seed() {
-  // open the connection to Neon (defined in data-source.ts)
   await AppDataSource.initialize();
 
-  // repositories are TypeORM's way of querying/saving a specific entity/table
   const roleRepo = AppDataSource.getRepository(Role);
+  const permissionRepo = AppDataSource.getRepository(Permission);
   const userRepo = AppDataSource.getRepository(User);
 
-  // the 3 roles our system needs to exist before anyone can log in
-  const roleNames = ["HR_ADMIN", "MANAGER", "EMPLOYEE"];
+  // 1. create every permission if it doesn't already exist
+  const permissionMap: Record<string, Permission> = {};
 
-  // we'll store the created/found Role objects here, keyed by name,
-  // so we can easily grab "HR_ADMIN" later when creating the admin user
+  for (const name of ALL_PERMISSIONS) {
+    let permission = await permissionRepo.findOne({ where: { name } });
+    if (!permission) {
+      permission = permissionRepo.create({ name });
+      await permissionRepo.save(permission);
+      console.log(`Created permission: ${name}`);
+    }
+    permissionMap[name] = permission;
+  }
+
+  // 2. create SUPER_ADMIN, HR_ADMIN, MANAGER, EMPLOYEE roles, with their
+  // default permissions attached
+  const roleNames = ["SUPER_ADMIN", "HR_ADMIN", "MANAGER", "EMPLOYEE"];
   const roles: Record<string, Role> = {};
 
   for (const name of roleNames) {
-    // check if this role already exists (so re-running this script is safe — "idempotent")
-    let role = await roleRepo.findOne({ where: { name } });
+    let role = await roleRepo.findOne({
+      where: { name },
+      relations: { permissions: true },
+    });
 
     if (!role) {
-      // doesn't exist yet — create and save it
       role = roleRepo.create({ name });
-      await roleRepo.save(role);
-      console.log(`Created role: ${name}`);
     }
+
+    // SUPER_ADMIN gets every permission that exists; others get their
+    // defined default set
+    const defaultPermissionNames =
+      name === "SUPER_ADMIN" ? ALL_PERMISSIONS : ROLE_DEFAULTS[name];
+
+    if (!defaultPermissionNames) {
+      throw new Error(`No default permissions defined for role: ${name}`);
+    }
+
+    role.permissions = defaultPermissionNames.map((permName) => {
+      const perm = permissionMap[permName];
+      if (!perm) {
+        throw new Error(`Permission not found: ${permName}`);
+      }
+      return perm;
+    });
+
+    await roleRepo.save(role);
+    console.log(
+      `Configured role: ${name} with ${role.permissions.length} permissions`,
+    );
 
     roles[name] = role;
   }
 
-  // NOTE on the next block:
-  // roles["HR_ADMIN"] is typed as `Role | undefined` by TypeScript,
-  // because your tsconfig has `noUncheckedIndexedAccess: true` — this setting
-  // forces us to prove a key actually exists before using it, since TS can't
-  // verify that at compile time for a plain object lookup.
-  // The fix pattern is always: assign to a variable, then `if (!x) throw`.
-  // After that check, TypeScript "narrows" the type to just `Role` for the rest of the function.
-  const adminRole = roles["HR_ADMIN"];
-  if (!adminRole) {
-    throw new Error("HR_ADMIN role was not created — seeding failed");
+  // 3. create the first SUPER_ADMIN account, if none exists
+  const superAdminRole = roles["SUPER_ADMIN"];
+  if (!superAdminRole) {
+    throw new Error("SUPER_ADMIN role was not created — seeding failed");
   }
 
-  // check if an admin account already exists, so re-running this script doesn't duplicate it
-  const existingAdmin = await userRepo.findOne({
-    where: { email: "michaelntumyyedu@gmail.com" },
+  const existingSuperAdmin = await userRepo.findOne({
+    where: { email: "admin@yourcompany.com" },
   });
 
-  if (!existingAdmin) {
-    // bcrypt.hash scrambles the password with a "salt" (random data) baked in,
-    // so even if the DB leaks, raw passwords aren't exposed.
-    // the "10" is the cost factor — higher = slower to compute = more secure, 10 is a solid default
-    const passwordHash = await bcrypt.hash("Whatisthepassword4HRadmin?", 10);
-
-    const admin = userRepo.create({
-      email: "michaelntumyyedu@gmail.com",
+  if (!existingSuperAdmin) {
+    const passwordHash = await bcrypt.hash("ChangeMe123!", 10);
+    const superAdmin = userRepo.create({
+      email: "admin@yourcompany.com",
       password_hash: passwordHash,
-      role: adminRole,
+      role: superAdminRole,
     });
-
-    await userRepo.save(admin);
-    console.log("Created first admin: michaelntumyyedu@gmail.com / Whatisthepassword4HRadmin?");
+    await userRepo.save(superAdmin);
+    console.log(
+      "Created first SUPER_ADMIN: admin@yourcompany.com / ChangeMe123!",
+    );
   } else {
-    console.log("Admin already exists, skipping.");
+    console.log("SUPER_ADMIN already exists, skipping.");
   }
 
-  // close the DB connection cleanly when the script finishes
   await AppDataSource.destroy();
 }
 
-// run the seed function, and if anything throws, log it and exit with an error code
-// (exit code 1 signals failure — useful if this is ever run in a CI/deploy pipeline)
-// seed().catch((err) => {
-//   console.error("Seed failed:", err);
-//   process.exit(1);
-// });
-
-async function main() {
-  try {
-    await seed();
-  } catch (err) {
-    console.error("Seed failed:", err);
-    process.exit(1);
-  }
-}
-
-main();
+seed().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});
