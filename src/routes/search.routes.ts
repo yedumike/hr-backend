@@ -101,10 +101,9 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     // VALIDATE LIMIT
     // ============================================================
 
-    const DEFAULT_LIMIT = 3;
     const MAX_LIMIT = 50;
 
-    let limit = DEFAULT_LIMIT;
+    let limit: number | undefined;
 
     if (rawLimit !== undefined) {
       if (typeof rawLimit !== "string") {
@@ -127,7 +126,6 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
 
       limit = parsedLimit;
     }
-
     // ============================================================
     // AUTHORIZATION
     // ============================================================
@@ -188,7 +186,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
               }
             : {}),
         },
-        take: limit,
+        ...(limit !== undefined ? { take: limit } : {}),
       });
 
       results.employees = allEmployees.map((emp) => {
@@ -259,7 +257,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
           description: true,
           is_active: true,
         },
-        take: limit,
+        ...(limit !== undefined ? { take: limit } : {}),
       });
 
       results.departments = allDepartments.map((dept) => {
@@ -307,7 +305,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
             last_name: true,
           },
         },
-        take: limit,
+        ...(limit !== undefined ? { take: limit } : {}),
       });
 
       results.certifications = allCertifications.map((cert) => {
@@ -366,7 +364,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
             last_name: true,
           },
         },
-        take: limit,
+        ...(limit !== undefined ? { take: limit } : {}),
       });
 
       results.education = allEducation.map((edu) => {
@@ -428,7 +426,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
             last_name: true,
           },
         },
-        take: limit,
+        ...(limit !== undefined ? { take: limit } : {}),
       });
 
       results.documents = allDocuments.map((doc) => ({
