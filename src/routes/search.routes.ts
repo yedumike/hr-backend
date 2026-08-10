@@ -27,26 +27,27 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     return;
   }
 
-let requestedTypes: string[] = [];
+  let requestedTypes: string[] = [];
 
-if (type !== undefined) {
-  if (typeof type !== "string") {
-    res.status(400).json({ error: "type must be a comma-separated string" });
-    return;
+  if (type !== undefined) {
+    if (typeof type !== "string") {
+      res.status(400).json({ error: "type must be a comma-separated string" });
+      return;
+    }
+
+    requestedTypes = type.split(",").map((t) => t.trim());
+
+    const invalidTypes = requestedTypes.filter((t) => !validTypes.includes(t));
+    if (invalidTypes.length > 0) {
+      res.status(400).json({
+        error: `Invalid type(s): ${invalidTypes.join(", ")}. Must be one of: ${validTypes.join(", ")}`,
+      });
+      return;
+    }
   }
 
-  requestedTypes = type.split(",").map((t) => t.trim());
-
-  const invalidTypes = requestedTypes.filter((t) => !validTypes.includes(t));
-  if (invalidTypes.length > 0) {
-    res.status(400).json({
-      error: `Invalid type(s): ${invalidTypes.join(", ")}. Must be one of: ${validTypes.join(", ")}`,
-    });
-    return;
-  }
-}
-
-  const isAdmin = req.user!.role === "HR_ADMIN";
+  // const isAdmin = req.user!.role === "HR_ADMIN";
+  const isAdmin = req.user!.permissions.includes("employees:view_sensitive");
   const keyword = `%${q.trim()}%`; // ILike wildcard pattern for partial, case-insensitive matching
 
   const employeeRepo = AppDataSource.getRepository(Employee);
@@ -57,7 +58,8 @@ if (type !== undefined) {
 
   const results: Record<string, unknown> = {};
 
-const shouldSearch = (t: string) => requestedTypes.length === 0 || requestedTypes.includes(t);
+  const shouldSearch = (t: string) =>
+    requestedTypes.length === 0 || requestedTypes.includes(t);
 
   if (shouldSearch("employees")) {
     const restrictedSelect = {
