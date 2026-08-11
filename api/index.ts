@@ -26,8 +26,17 @@ if (!FRONTEND_URL) {
 
 app.use(
   cors({
-    origin: [FRONTEND_URL, "http://localhost:51173"],
+    origin: [FRONTEND_URL, "http://localhost:5173"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
+    maxAge: 86400,
   }),
 );
 
