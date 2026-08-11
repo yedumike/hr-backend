@@ -17,6 +17,7 @@ import documentRoutes from "./routes/document.routes";
 import searchRoutes from "./routes/search.routes";
 import roleRoutes from "./routes/role.routes";
 import permissionRoutes from "./routes/permission.routes";
+import reportsRoutes from "../src/routes/reports.routes";
 
 dotenv.config();
 
@@ -70,7 +71,7 @@ app.use("/documents", documentRoutes);
 app.use("/search", searchRoutes);
 app.use("/roles", roleRoutes);
 app.use("/permissions", permissionRoutes);
-
+app.use("/reports", reportsRoutes);
 // connect to the database first, and only start listening for requests
 // once that succeeds — avoids the server accepting traffic before it can query anything
 AppDataSource.initialize()

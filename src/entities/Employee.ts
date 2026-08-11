@@ -12,6 +12,7 @@ import { Department } from "./Department";
 import { User } from "./User";
 
 export type EmployeeStatus = "active" | "inactive" | "terminated";
+export type EmployeeGender = "male" | "female";
 
 @Entity("employees")
 export class Employee {
@@ -82,4 +83,7 @@ export class Employee {
 
   @UpdateDateColumn({ type: "timestamp" })
   updated_at!: Date;
+
+  @Column({ type: "varchar", nullable: true })
+  gender!: EmployeeGender;
 }
