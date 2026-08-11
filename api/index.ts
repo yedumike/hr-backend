@@ -16,7 +16,7 @@ import documentRoutes from "../src/routes/document.routes";
 import searchRoutes from "../src/routes/search.routes";
 import roleRoutes from "../src/routes/role.routes";
 import permissionRoutes from "../src/routes/permission.routes";
-
+import reportsRoutes from "../src/routes/reports.routes";
 const app = express();
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
@@ -72,6 +72,7 @@ app.use("/documents", documentRoutes);
 app.use("/search", searchRoutes);
 app.use("/roles", roleRoutes);
 app.use("/permissions", permissionRoutes);
+app.use("/reports", reportsRoutes);
 // Export the native Express app instance directly. Vercel routes traffic to it seamlessly.
 
 export const maxDuration = 30;
