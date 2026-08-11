@@ -102,6 +102,7 @@ router.post(
       related_entity_id: related_entity_id ?? null,
       file_url: storageKey,
       ocr_status: "pending",
+      original_filename: file.originalname,
     });
     await documentRepo.save(document);
 

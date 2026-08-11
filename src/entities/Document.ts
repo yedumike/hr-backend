@@ -54,4 +54,7 @@ export class Document {
 
   @CreateDateColumn({ type: "timestamp" })
   uploaded_at!: Date;
+
+  @Column({ type: "varchar", nullable: true })
+  original_filename!: string; // e.g. "cv.pdf" — for display purposes, separate from the storage key
 }
