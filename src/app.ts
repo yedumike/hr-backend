@@ -29,10 +29,17 @@ if (!FRONTEND_URL) {
   throw new Error("FRONTEND_URL is not set in .env");
 }
 
+// app.use(
+//   cors({
+//     origin: FRONTEND_URL, // only requests from this exact origin are allowed
+//     credentials: true, // required so the browser sends/receives cookies cross-site
+//   }),
+// );
+
 app.use(
   cors({
-    origin: FRONTEND_URL, // only requests from this exact origin are allowed
-    credentials: true, // required so the browser sends/receives cookies cross-site
+    origin: [FRONTEND_URL, "http://localhost:5173"],
+    credentials: true,
   }),
 );
 
